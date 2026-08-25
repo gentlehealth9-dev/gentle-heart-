@@ -3431,11 +3431,12 @@ function printKitchen(){
   const sched = getScheduledForDate(kitchenDate);
   const hasDiet = x=>!!dietaryCategory(x.client.dietary);
   const formatDietary = t => (t && t.trim()==='回') ? '回民餐' : t;
-  const sorted = [...sched].sort((a,b)=>{
-    const da = hasDiet(a)?0:1, db = hasDiet(b)?0:1;
-    if(da!==db) return da-db;
-    return Number(a.client.id)-Number(b.client.id);
-  });
+  // Keep special-diet people listed first (that's the point of this sheet),
+  // but group couples together within each section instead of plain ID order.
+  const sorted = [
+    ...sortWithCouplesGrouped(sched.filter(hasDiet)),
+    ...sortWithCouplesGrouped(sched.filter(x=>!hasDiet(x)))
+  ];
   const dietCount = sched.filter(hasDiet).length;
   const html = `
     <div class="print-title">廚房備餐需求單</div>
