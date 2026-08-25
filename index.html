@@ -3434,9 +3434,13 @@ function printKitchen(){
   const sorted = sortWithCouplesGrouped(sched);
   const dietCount = sched.filter(hasDiet).length;
   const html = `
+    <style>
+      table.kitchen-table{font-size:12px;}
+      table.kitchen-table th,table.kitchen-table td{padding:3px 6px;}
+    </style>
     <div class="print-title">廚房備餐需求單</div>
     <div class="print-sub">${fmtDateHuman(kitchenDate)} · 總用餐 ${sched.length} 人，特殊飲食 ${dietCount} 人</div>
-    <table class="sig-table">
+    <table class="sig-table kitchen-table">
       <thead><tr><th style="width:50px;">編號</th><th>姓名</th><th>飲食需求</th><th style="width:56px;">確認</th></tr></thead>
       <tbody>
         ${sorted.map(x=>{
@@ -3445,7 +3449,7 @@ function printKitchen(){
             <td>${escapeHtml(x.client.id)}</td>
             <td>${escapeHtml(x.client.enName)} ${escapeHtml(x.client.cnName)}</td>
             <td>${d? `<span style="color:#A1443A; font-weight:700;">${escapeHtml(d)}</span>` : '—'}</td>
-            <td style="text-align:center; font-size:18px; color:#999;">☐</td>
+            <td style="text-align:center; font-size:14px; color:#999;">☐</td>
           </tr>`;
         }).join('') || `<tr><td colspan="4" style="text-align:center;color:#777;">今日無到訪會員</td></tr>`}
       </tbody>
