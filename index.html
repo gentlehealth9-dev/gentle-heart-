@@ -2890,12 +2890,13 @@ function printSignIn(){
     <table class="sig-table">
       <thead><tr><th style="width:50px;">ID</th><th>English Name</th><th>Chinese Name</th><th>Time In</th><th>Time Out</th><th>Signature</th></tr></thead>
       <tbody>
-        ${sched.map((x)=>`<tr>
+        ${sched.length ? sched.map((x)=>`<tr>
           <td>${escapeHtml(x.client.id)}</td>
           <td>${escapeHtml(x.client.enName)}</td>
           <td>${escapeHtml(x.client.cnName)}</td>
           <td></td><td></td><td></td>
-        </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;color:#777;">No company-pickup participants today</td></tr>`}
+        </tr>`).join('') : `<tr><td colspan="6" style="text-align:center;color:#777;">No company-pickup participants today</td></tr>`}
+        ${Array.from({length:3}).map(()=>`<tr><td colspan="6" style="height:28px; color:#bbb;">&nbsp;</td></tr>`).join('')}
       </tbody>
     </table>`;
   openAndPrintDoc(`公司接送簽到表_${scheduleDate}`, html, 'portrait');
@@ -2925,12 +2926,13 @@ function printUberWaiver(){
     <table class="sig-table">
       <thead><tr><th style="width:50px;">ID</th><th>English Name</th><th>Chinese Name</th><th>Time In</th><th>Time Out</th><th>Signature</th></tr></thead>
       <tbody>
-        ${sched.map(x=>`<tr>
+        ${sched.length ? sched.map(x=>`<tr>
           <td>${escapeHtml(x.client.id)}</td>
           <td>${escapeHtml(x.client.enName)}</td>
           <td>${escapeHtml(x.client.cnName)}</td>
           <td></td><td></td><td></td>
-        </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;color:#777;">No self-drive/Uber participants today</td></tr>`}
+        </tr>`).join('') : `<tr><td colspan="6" style="text-align:center;color:#777;">No self-drive/Uber participants today</td></tr>`}
+        ${Array.from({length:3}).map(()=>`<tr><td colspan="6" style="height:28px; color:#bbb;">&nbsp;</td></tr>`).join('')}
       </tbody>
     </table>`;
   openAndPrintDoc(`自駕Uber免責簽到表_${scheduleDate}`, html, 'portrait');
