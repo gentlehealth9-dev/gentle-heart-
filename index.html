@@ -1813,13 +1813,13 @@ function openMemberModal(id, isVisitorMode){
           <label class="field">開始日期
             <div style="position:relative;">
               <button type="button" id="f_exc_date_btn" onclick="toggleExcCalendar(event)" style="width:100%; text-align:left; padding:7px 10px; border:1px solid var(--line); border-radius:7px; background:#fff; cursor:pointer; font-size:13.5px; color:var(--ink-soft);">請選擇日期</button>
-              <div id="f_exc_calendar" style="display:none; position:absolute; z-index:60; top:100%; left:0; margin-top:4px; background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow); padding:10px; width:230px;"></div>
+              <div id="f_exc_calendar" style="display:none; position:fixed; z-index:9999; background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow); padding:10px; width:230px;"></div>
             </div>
           </label>
           <label class="field">結束日期（選填，請假可連續多天一起標記）
             <div style="position:relative;">
               <button type="button" id="f_exc_end_date_btn" onclick="toggleExcEndCalendar(event)" style="width:100%; text-align:left; padding:7px 10px; border:1px solid var(--line); border-radius:7px; background:#fff; cursor:pointer; font-size:13.5px; color:var(--ink-soft);">不設定（只標記一天）</button>
-              <div id="f_exc_end_calendar" style="display:none; position:absolute; z-index:60; top:100%; left:0; margin-top:4px; background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow); padding:10px; width:230px;"></div>
+              <div id="f_exc_end_calendar" style="display:none; position:fixed; z-index:9999; background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow); padding:10px; width:230px;"></div>
             </div>
           </label>
         </div>
@@ -1944,7 +1944,25 @@ function toggleExcPicker(key, evt){
   cfg.viewMonth = {year: base.getFullYear(), month: base.getMonth()};
   renderExcCalendar(key);
   panel.style.display = 'block';
+  positionFixedPanel(document.getElementById(cfg.btnId), panel);
   setTimeout(()=> document.addEventListener('click', closeExcCalendarOnOutsideClick), 0);
+}
+// The member-edit modal scrolls (.modal{overflow:auto}), which clips any
+// position:absolute dropdown inside it once the modal is scrolled — the
+// dropdown (or parts of it, like its nav arrows) can render outside the
+// modal's visible/clickable area. position:fixed placed via the trigger
+// button's real screen coordinates avoids that entirely.
+function positionFixedPanel(btn, panel){
+  if(!btn || !panel) return;
+  const rect = btn.getBoundingClientRect();
+  const panelWidth = panel.offsetWidth || 230;
+  const panelHeight = panel.offsetHeight || 260;
+  let left = rect.left;
+  if(left + panelWidth > window.innerWidth - 8) left = Math.max(8, window.innerWidth - panelWidth - 8);
+  let top = rect.bottom + 4;
+  if(top + panelHeight > window.innerHeight - 8) top = Math.max(8, rect.top - panelHeight - 4);
+  panel.style.left = left+'px';
+  panel.style.top = top+'px';
 }
 function closeExcCalendarOnOutsideClick(e){
   ['start','end'].forEach(key=>{
@@ -1993,6 +2011,7 @@ function shiftExcMonth(key, delta){
   if(month>11){month=0; year++;}
   cfg.viewMonth = {year, month};
   renderExcCalendar(key);
+  positionFixedPanel(document.getElementById(cfg.btnId), document.getElementById(cfg.panelId));
 }
 function pickExcDate(key, year, month, day){
   const cfg = EXC_PICKERS[key];
