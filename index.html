@@ -2761,19 +2761,64 @@ function closePrintPreview(){
   if(mainEl) mainEl.style.removeProperty('display');
 }
 
+function idCompare(idA, idB){
+  const aV = typeof idA==='string' && idA.charAt(0)==='V';
+  const bV = typeof idB==='string' && idB.charAt(0)==='V';
+  if(aV !== bV) return aV ? 1 : -1;
+  const an = Number(idA), bn = Number(idB);
+  const aNum = !isNaN(an), bNum = !isNaN(bn);
+  if(aNum && bNum) return an - bn;
+  if(aNum !== bNum) return aNum ? -1 : 1;
+  return String(idA).localeCompare(String(idB));
+}
+
+// Sorts a scheduled list so married couples (relationship contains "夫妻")
+// sit next to each other, ordered by the lower ID in each couple; everyone
+// else (and any couple whose partner isn't scheduled today) falls back to
+// plain ID order.
+function sortWithCouplesGrouped(schedArr){
+  const scheduledIds = new Set(schedArr.map(x=>x.client.id));
+  function explicitPartnerId(client){
+    const rel = client.relationship || '';
+    if(!/夫妻/.test(rel)) return null;
+    const selfEsc = String(client.id).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    let m = rel.match(new RegExp(selfEsc+'\\/([^\\s·]+?)夫妻'));
+    if(m) return m[1];
+    m = rel.match(new RegExp('([^\\s·]+?)\\/'+selfEsc+'夫妻'));
+    if(m) return m[1];
+    return null;
+  }
+  // Fallback for couples noted without an explicit "ID/ID夫妻" pair
+  // (e.g. "131的朋友，夫妻") — group anyone scheduled today who shares
+  // that exact relationship text.
+  const relTextGroups = {};
+  schedArr.forEach(x=>{
+    const rel = (x.client.relationship||'').trim();
+    if(rel && /夫妻/.test(rel) && !explicitPartnerId(x.client)){
+      (relTextGroups[rel] = relTextGroups[rel]||[]).push(x.client.id);
+    }
+  });
+  const groupMinRank = {};
+  schedArr.forEach(x=>{
+    let ids = [x.client.id];
+    const partnerId = explicitPartnerId(x.client);
+    if(partnerId && scheduledIds.has(partnerId)) ids.push(partnerId);
+    const rel = (x.client.relationship||'').trim();
+    if(rel && relTextGroups[rel] && relTextGroups[rel].length>1) ids = relTextGroups[rel];
+    groupMinRank[x.client.id] = ids.reduce((min,id)=> idCompare(id,min)<0 ? id : min, ids[0]);
+  });
+  return schedArr.slice().sort((a,b)=>{
+    const gc = idCompare(groupMinRank[a.client.id], groupMinRank[b.client.id]);
+    if(gc !== 0) return gc;
+    return idCompare(a.client.id, b.client.id);
+  });
+}
+
 function printSignIn(){
  try{
-  const sched = getScheduledForDate(scheduleDate).filter(x=>x.client.transportMode==='company')
-    .sort((a,b)=>{
-      const aV = typeof a.client.id==='string' && a.client.id.charAt(0)==='V';
-      const bV = typeof b.client.id==='string' && b.client.id.charAt(0)==='V';
-      if(aV !== bV) return aV ? 1 : -1;
-      const an = Number(a.client.id), bn = Number(b.client.id);
-      const aNum = !isNaN(an), bNum = !isNaN(bn);
-      if(aNum && bNum) return an - bn;
-      if(aNum !== bNum) return aNum ? -1 : 1;
-      return String(a.client.id).localeCompare(String(b.client.id));
-    });
+  const sched = sortWithCouplesGrouped(
+    getScheduledForDate(scheduleDate).filter(x=>x.client.transportMode==='company')
+  );
   const html = `
     <div style="background:#EDEAE1; color:#2B2620; padding:16px 20px; border-radius:8px; text-align:center; margin-bottom:16px;">
       <div class="print-title" style="color:#2B2620; margin-bottom:4px;">Gentle Heart Daycare Center Participants Daily Sign in Records</div>
@@ -2800,8 +2845,9 @@ function printSignIn(){
 
 function printUberWaiver(){
  try{
-  const sched = getScheduledForDate(scheduleDate).filter(x=>x.client.transportMode==='uber_self')
-    .sort((a,b)=> Number(a.client.id)-Number(b.client.id));
+  const sched = sortWithCouplesGrouped(
+    getScheduledForDate(scheduleDate).filter(x=>x.client.transportMode==='uber_self')
+  );
   const html = `
     <div style="background:#EDEAE1; color:#2B2620; padding:16px 20px; border-radius:8px; text-align:center; margin-bottom:16px;">
       <div class="print-title" style="color:#2B2620; margin-bottom:4px;">Gentle Heart Daycare Center Transportation Waiver</div>
