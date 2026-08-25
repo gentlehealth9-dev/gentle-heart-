@@ -2896,7 +2896,7 @@ function printSignIn(){
           <td>${escapeHtml(x.client.cnName)}</td>
           <td></td><td></td><td></td>
         </tr>`).join('') : `<tr><td colspan="6" style="text-align:center;color:#777;">No company-pickup participants today</td></tr>`}
-        ${Array.from({length:3}).map(()=>`<tr><td colspan="6" style="height:28px; color:#bbb;">&nbsp;</td></tr>`).join('')}
+        ${Array.from({length:8}).map(()=>`<tr style="height:28px;"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`).join('')}
       </tbody>
     </table>`;
   openAndPrintDoc(`公司接送簽到表_${scheduleDate}`, html, 'portrait');
@@ -2932,7 +2932,7 @@ function printUberWaiver(){
           <td>${escapeHtml(x.client.cnName)}</td>
           <td></td><td></td><td></td>
         </tr>`).join('') : `<tr><td colspan="6" style="text-align:center;color:#777;">No self-drive/Uber participants today</td></tr>`}
-        ${Array.from({length:3}).map(()=>`<tr><td colspan="6" style="height:28px; color:#bbb;">&nbsp;</td></tr>`).join('')}
+        ${Array.from({length:8}).map(()=>`<tr style="height:28px;"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`).join('')}
       </tbody>
     </table>`;
   openAndPrintDoc(`自駕Uber免責簽到表_${scheduleDate}`, html, 'portrait');
