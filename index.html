@@ -1697,7 +1697,7 @@ function openMemberModal(id, isVisitorMode){
   overlay.innerHTML = `
     <div class="modal">
       <div class="modal-head">
-        <h3>${isNew? (isVisitorMode? '新增訪客' : '新增會員') :'編輯會員資料'}</h3>
+        <h3 id="memberModalTitle">${isNew? (isVisitorMode? '新增訪客' : '新增會員') :'編輯會員資料'}</h3>
         <button class="x-close" onclick="closeMemberModal()">✕</button>
       </div>
       <div class="modal-body">
@@ -1841,7 +1841,7 @@ function openMemberModal(id, isVisitorMode){
       <div class="modal-foot">
         ${!isNew? `<button class="btn warn" onclick="deleteMember('${c.id}')" style="margin-right:auto;">刪除會員</button>`:''}
         <button class="btn ghost" onclick="closeMemberModal()">取消</button>
-        <button class="btn" onclick="saveMemberModal(${isNew})">儲存</button>
+        <button class="btn" id="memberModalSaveBtn" onclick="saveMemberModal(${isNew})">儲存</button>
       </div>
     </div>
   `;
@@ -2281,6 +2281,13 @@ async function saveMemberModal(isNew){
 
   if(isNew){
     CLIENTS.push(obj);
+    // The modal stays open after saving (see below), so flip it from
+    // "new record" mode to "editing" mode now — otherwise a second save
+    // click would still think it's new and push a duplicate.
+    const titleEl = document.getElementById('memberModalTitle');
+    if(titleEl) titleEl.textContent = '編輯會員資料';
+    const saveBtn = document.getElementById('memberModalSaveBtn');
+    if(saveBtn) saveBtn.setAttribute('onclick', 'saveMemberModal(false)');
   } else {
     const idx = CLIENTS.findIndex(c=>c.id===originalId);
     if(idx===-1){ showToast('找不到原本的會員資料，儲存失敗'); return; }
@@ -2319,11 +2326,13 @@ async function saveMemberModal(isNew){
     showToast('已儲存');
   }
 
-  // Stay on this member after saving (instead of closing the modal) so
-  // staff can keep adding leave/extra entries etc. to the same person
-  // without having to re-open them from the list each time.
-  closeMemberModal();
-  openMemberModal(id);
+  // Keep the modal open exactly as it is (no close/reopen — that used to
+  // cause a visible flash and reset scroll position/focus) so staff can
+  // keep editing the same record continuously and close it themselves
+  // whenever they're actually done. Just sync the hidden "original id"
+  // field in case the ID changed, and clear the unsaved-changes flag.
+  if(originalIdInput) originalIdInput.value = id;
+  window.__memberModalDirty = false;
   render();
 }
 
