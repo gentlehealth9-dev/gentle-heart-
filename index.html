@@ -3176,22 +3176,24 @@ function buildAndOpenDriverRoutes(driversOverride){
   });
   Object.keys(grouped).forEach(k=> grouped[k].sort((a,b)=> compareAddressesForRoute(a.client.address, b.client.address)));
   const drivers = driversOverride || Object.keys(grouped).sort();
-  const SPARE_ROWS = 5;
+  const SPARE_ROWS = 2;
 
   if(!drivers.length){
     openPrintableDoc(`司機接送路線表_${driverDate}`, `<div class="empty-state"><div class="big">🚐</div>${fmtDateHuman(driverDate)} 沒有符合條件的公司接送資料可以列印。</div>`);
     return;
   }
 
+  const totalCount = drivers.reduce((sum,d)=> sum + (grouped[d]||[]).length, 0);
+  const heading = drivers.length===1 ? `${escapeHtml(drivers[0])} 接送路線表` : '司機接送路線總表';
+
   const html = `
     <style>
-      .driver-route-page{ page-break-before: always; }
-      .driver-route-page:first-child{ page-break-before: avoid; }
       table.route-table{width:100%; border-collapse:collapse; font-size:14.5px; table-layout:fixed; margin-top:8px;}
       table.route-table th,table.route-table td{border:1px solid #888; padding:9px 10px; text-align:left; word-wrap:break-word;}
       table.route-table th{background:#F0EBDD; font-size:13px; font-weight:700;}
       table.route-table thead{display:table-header-group;}
       table.route-table tr{page-break-inside:avoid;}
+      tr.driver-group-row td{background:#E4DDCE; font-weight:700; font-size:13.5px; page-break-after:avoid;}
       col.col-mrid{width:6%;}
       col.col-name{width:13%;}
       col.col-cnname{width:10%;}
@@ -3202,33 +3204,32 @@ function buildAndOpenDriverRoutes(driversOverride){
       .route-meta{color:#555; font-size:13.5px; margin-bottom:10px;}
       .spare-row td{color:#bbb; height:26px;}
     </style>
-    ${drivers.map(d=>`
-      <div class="driver-route-page">
-        <div class="route-heading">${escapeHtml(d)} 接送路線表</div>
-        <div class="route-meta">${fmtDateHuman(driverDate)} · 共 ${(grouped[d]||[]).length} 位</div>
-        <table class="route-table">
-          <colgroup>
-            <col class="col-mrid"><col class="col-name"><col class="col-cnname"><col class="col-address"><col class="col-phone">
-            <col class="col-fill"><col class="col-fill"><col class="col-fill"><col class="col-fill"><col class="col-fill">
-          </colgroup>
-          <thead><tr>
-            <th>MRID</th><th>Name</th><th>Chinese Name</th><th>Address</th><th>Phone</th>
-            <th>Driver<br>pick up</th><th>Center<br>Arrival</th><th>Time<br>Out</th><th>Home<br>Arrival</th><th>Driver<br>Initial</th>
-          </tr></thead>
-          <tbody>
-            ${(grouped[d]||[]).map(x=>`<tr>
-              <td>${escapeHtml(x.client.id)}</td>
-              <td>${escapeHtml(x.client.enName)}</td>
-              <td>${escapeHtml(x.client.cnName)}</td>
-              <td>${escapeHtml(x.client.address)}</td>
-              <td>${escapeHtml(x.client.phone)}</td>
-              <td></td><td></td><td></td><td></td><td></td>
-            </tr>`).join('')}
-            ${Array.from({length:SPARE_ROWS}).map(()=>`<tr class="spare-row"><td colspan="10">&nbsp;</td></tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
-    `).join('')}`;
+    <div class="route-heading">${heading}</div>
+    <div class="route-meta">${fmtDateHuman(driverDate)} · 共 ${drivers.length} 位司機 · 共 ${totalCount} 位會員</div>
+    <table class="route-table">
+      <colgroup>
+        <col class="col-mrid"><col class="col-name"><col class="col-cnname"><col class="col-address"><col class="col-phone">
+        <col class="col-fill"><col class="col-fill"><col class="col-fill"><col class="col-fill"><col class="col-fill">
+      </colgroup>
+      <thead><tr>
+        <th>MRID</th><th>Name</th><th>Chinese Name</th><th>Address</th><th>Phone</th>
+        <th>Driver<br>pick up</th><th>Center<br>Arrival</th><th>Time<br>Out</th><th>Home<br>Arrival</th><th>Driver<br>Initial</th>
+      </tr></thead>
+      <tbody>
+        ${drivers.map(d=>`
+          <tr class="driver-group-row"><td colspan="10">${escapeHtml(d)} · 共 ${(grouped[d]||[]).length} 位</td></tr>
+          ${(grouped[d]||[]).map(x=>`<tr>
+            <td>${escapeHtml(x.client.id)}</td>
+            <td>${escapeHtml(x.client.enName)}</td>
+            <td>${escapeHtml(x.client.cnName)}</td>
+            <td>${escapeHtml(x.client.address)}</td>
+            <td>${escapeHtml(x.client.phone)}</td>
+            <td></td><td></td><td></td><td></td><td></td>
+          </tr>`).join('')}
+          ${Array.from({length:SPARE_ROWS}).map(()=>`<tr class="spare-row"><td colspan="10">&nbsp;</td></tr>`).join('')}
+        `).join('')}
+      </tbody>
+    </table>`;
   openPrintableDoc(`司機接送路線表_${driverDate}`, html);
  }catch(err){
     console.error('buildAndOpenDriverRoutes failed', err);
