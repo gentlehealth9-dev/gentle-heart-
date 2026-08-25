@@ -2702,10 +2702,9 @@ function openPrintableDoc(title, innerHtml, orientation){
   }
 }
 
-function openPrintInNewTab(){
-  if(!__lastPrintDoc){ showToast('沒有可開啟的列印內容'); return; }
-  const doc = `<!DOCTYPE html>
-<html lang="zh-Hant"><head><meta charset="UTF-8"><title>${escapeHtml(__lastPrintDoc.title)}</title>
+function buildPrintDocHtml(printDoc, hint){
+  return `<!DOCTYPE html>
+<html lang="zh-Hant"><head><meta charset="UTF-8"><title>${escapeHtml(printDoc.title)}</title>
 <style>
   html, body{width:100%; margin:0; padding:0;}
   body{font-family:'Noto Sans TC','Helvetica Neue',Arial,sans-serif; color:#2B2620; display:flex; justify-content:center;}
@@ -2716,7 +2715,7 @@ function openPrintInNewTab(){
   table.sig-table{width:100%; border-collapse:collapse; font-size:13px; margin-top:6px;}
   table.sig-table th,table.sig-table td{border:1px solid #999; padding:8px 10px; text-align:left;}
   table.sig-table th{background:#F0EBDD;}
-  @page{ size: A4 ${__lastPrintDoc.orientation||'landscape'}; margin: 10mm; }
+  @page{ size: A4 ${printDoc.orientation||'landscape'}; margin: 10mm; }
   @media print{
     body{display:block;}
     .print-page-inner{max-width:none; margin:0 auto; padding:0;}
@@ -2725,10 +2724,16 @@ function openPrintInNewTab(){
 </style></head>
 <body>
 <div class="print-page-inner">
-  <div class="hint-bar">🖨 列印前請確認列印視窗的「配置」欄位選的是<b>${__lastPrintDoc.orientation==='portrait'?'直向':'橫向'}</b>（瀏覽器有時會記住上次的設定，需要手動選一次）</div>
-  ${__lastPrintDoc.innerHtml}
+  ${hint ? `<div class="hint-bar">${hint}</div>` : ''}
+  ${printDoc.innerHtml}
 </div>
 </body></html>`;
+}
+
+function openPrintInNewTab(){
+  if(!__lastPrintDoc){ showToast('沒有可開啟的列印內容'); return; }
+  const hint = `🖨 列印前請確認列印視窗的「配置」欄位選的是<b>${__lastPrintDoc.orientation==='portrait'?'直向':'橫向'}</b>（瀏覽器有時會記住上次的設定，需要手動選一次）`;
+  const doc = buildPrintDocHtml(__lastPrintDoc, hint);
 
   // Open a blank tab first (direct result of the click, so it isn't treated as a popup),
   // then write the HTML straight into it. This avoids the browser's "download this blob"
@@ -2750,6 +2755,39 @@ function openPrintInNewTab(){
   win.document.close();
   try{ win.focus(); }catch(e){}
   showToast('已在新分頁開啟，請在該分頁按 Ctrl+P／⌘+P 列印');
+}
+
+// Opens the doc in a real (non-sandboxed) browser tab and triggers the
+// print dialog immediately — no manual Ctrl+P step. Used where a single
+// click should go straight to printing.
+function openAndPrintDoc(title, innerHtml, orientation){
+  orientation = orientation || 'landscape';
+  try{
+    const printDoc = {title, innerHtml, orientation};
+    __lastPrintDoc = printDoc;
+    const doc = buildPrintDocHtml(printDoc, null);
+
+    const win = window.open('', '_blank');
+    if(!win){
+      const blob = new Blob([doc], {type:'text/html'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${title}.html`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 30000);
+      showToast('瀏覽器擋住了新分頁，已改為下載檔案，請打開後列印');
+      return;
+    }
+    win.document.open();
+    win.document.write(doc);
+    win.document.close();
+    try{ win.focus(); }catch(e){}
+    // Give the new tab a moment to finish laying out before printing.
+    setTimeout(()=>{ try{ win.print(); }catch(e){ showToast('已開啟列印分頁，請按 Ctrl+P／⌘+P 列印'); } }, 300);
+  }catch(err){
+    console.error('openAndPrintDoc failed', err);
+    showToast('列印時發生錯誤：'+(err && err.message ? err.message : err));
+  }
 }
 function closePrintPreview(){
   document.body.classList.remove('print-mode-active');
@@ -3276,7 +3314,7 @@ function buildAndOpenDriverRoutes(driversOverride){
         `).join('')}
       </tbody>
     </table>`;
-  openPrintableDoc(`司機接送路線表_${driverDate}`, html);
+  openAndPrintDoc(`司機接送路線表_${driverDate}`, html, 'landscape');
  }catch(err){
     console.error('buildAndOpenDriverRoutes failed', err);
     showToast('產生路線表時發生錯誤：'+(err && err.message ? err.message : err));
