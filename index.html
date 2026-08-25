@@ -3184,10 +3184,10 @@ function renderDrivers(root){
             </span>
           </div>
           <table class="datatable">
-            <thead><tr><th style="width:26px; border-right:2px solid #888;">#</th><th>編號</th><th>姓名</th><th>地址</th><th>電話</th><th></th></tr></thead>
+            <thead><tr><th style="width:26px; border-right:2px solid var(--teal); color:var(--ink-soft);">#</th><th>編號</th><th>姓名</th><th>地址</th><th>電話</th><th></th></tr></thead>
             <tbody>
               ${(grouped[d]||[]).map((x,i)=>`<tr>
-                <td style="border-right:2px solid #888;">${i+1}</td>
+                <td style="border-right:2px solid var(--teal); color:var(--ink-soft);">${i+1}</td>
                 <td class="mono" style="color:var(--ink-soft);">${escapeHtml(x.client.id)}</td>
                 <td><b>${escapeHtml(x.client.enName)}</b><br><span style="color:var(--ink-soft);font-size:11.5px;">${escapeHtml(x.client.cnName)}</span></td>
                 <td style="font-size:12px;">${escapeHtml(x.client.address)}</td>
