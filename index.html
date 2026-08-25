@@ -2898,7 +2898,7 @@ function printSignIn(){
         </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;color:#777;">No company-pickup participants today</td></tr>`}
       </tbody>
     </table>`;
-  openPrintableDoc(`公司接送簽到表_${scheduleDate}`, html, 'portrait');
+  openAndPrintDoc(`公司接送簽到表_${scheduleDate}`, html, 'portrait');
  }catch(err){
   console.error('printSignIn failed', err);
   showToast('產生簽到表時發生錯誤：'+(err && err.message ? err.message : err));
@@ -2933,7 +2933,7 @@ function printUberWaiver(){
         </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;color:#777;">No self-drive/Uber participants today</td></tr>`}
       </tbody>
     </table>`;
-  openPrintableDoc(`自駕Uber免責簽到表_${scheduleDate}`, html, 'portrait');
+  openAndPrintDoc(`自駕Uber免責簽到表_${scheduleDate}`, html, 'portrait');
  }catch(err){
   console.error('printUberWaiver failed', err);
   showToast('產生免責簽到表時發生錯誤：'+(err && err.message ? err.message : err));
