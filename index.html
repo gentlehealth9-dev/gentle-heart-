@@ -2949,9 +2949,22 @@ function sortWithCouplesGrouped(schedArr){
   });
 }
 
+// Same as sortWithCouplesGrouped, but also keeps everyone at the same
+// address next to each other (not just declared "夫妻" couples) — e.g.
+// roommates or family sharing a unit who aren't tagged as married. Sorts
+// by address first, then falls back to the couples/ID order within a
+// shared address (Array.sort's stability keeps couples adjacent even
+// when they also share an address).
+function sortByAddressThenCouples(schedArr){
+  const couplesOrdered = sortWithCouplesGrouped(schedArr);
+  return couplesOrdered.slice().sort((a,b)=>
+    normalizeAddressForSort(a.client.address).localeCompare(normalizeAddressForSort(b.client.address))
+  );
+}
+
 function printSignIn(){
  try{
-  const sched = sortWithCouplesGrouped(
+  const sched = sortByAddressThenCouples(
     getScheduledForDate(scheduleDate).filter(x=>x.client.transportMode==='company')
   );
   const html = `
