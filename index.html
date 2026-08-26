@@ -368,6 +368,12 @@ function fmtDateEnglish(dateStr){
   const wLabel = wd ? DAY_LABEL_EN[wd] : "Weekend";
   return `${dateStr} (${wLabel})`;
 }
+function fmtDateMDY(dateStr){
+  const d = parseDate(dateStr);
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${mm}/${dd}/${d.getFullYear()}`;
+}
 function mondayOf(dateStr){
   const d = parseDate(dateStr);
   const day = d.getDay(); // 0 Sun
@@ -3399,58 +3405,61 @@ function buildAndOpenDriverRoutes(driversOverride){
     return;
   }
 
-  const totalCount = drivers.reduce((sum,d)=> sum + (grouped[d]||[]).length, 0);
-  const heading = drivers.length===1 ? `${escapeHtml(drivers[0])} 接送路線表` : '司機接送路線總表';
+  const tripLabel = ['第一趟','第二趟','第三趟','第四趟','第五趟'];
 
   const html = `
     <style>
+      .route-page{page-break-after:always;}
+      .route-page:last-child{page-break-after:auto;}
       table.route-table{width:100%; border-collapse:collapse; font-size:14.5px; table-layout:fixed; margin-top:8px;}
       table.route-table th,table.route-table td{border:1px solid #888; padding:9px 10px; text-align:left; word-wrap:break-word;}
       table.route-table th{background:#F0EBDD; font-size:13px; font-weight:700;}
       table.route-table thead{display:table-header-group;}
       table.route-table tr{page-break-inside:avoid;}
-      tr.driver-group-row td{background:#E4DDCE; font-weight:700; font-size:13.5px; page-break-after:avoid;}
       col.col-mrid{width:6%;}
       col.col-name{width:13%;}
       col.col-cnname{width:10%;}
       col.col-address{width:27%;}
       col.col-phone{width:11%;}
       col.col-fill{width:8.25%;}
-      .route-heading{font-family:'Noto Serif TC',serif; font-size:22px; font-weight:700; margin:0 0 4px;}
-      .route-meta{color:#555; font-size:13.5px; margin-bottom:10px;}
+      .route-title{text-align:center; font-family:'Noto Serif TC',serif; font-size:22px; font-weight:700; margin:0 0 10px;}
+      .route-date-row{display:flex; justify-content:space-between; align-items:baseline; font-size:14.5px; font-weight:700; border-bottom:2px solid #333; padding-bottom:6px; margin-bottom:2px;}
       .spare-row td{color:#bbb; height:26px;}
     </style>
-    <div class="route-heading">${heading}</div>
-    <div class="route-meta">${fmtDateHuman(driverDate)} · 共 ${drivers.length} 位司機 · 共 ${totalCount} 位會員</div>
-    <table class="route-table">
-      <colgroup>
-        <col class="col-mrid"><col class="col-name"><col class="col-cnname"><col class="col-address"><col class="col-phone">
-        <col class="col-fill"><col class="col-fill"><col class="col-fill"><col class="col-fill"><col class="col-fill">
-      </colgroup>
-      <thead><tr>
-        <th>MRID</th><th>Name</th><th>Chinese Name</th><th>Address</th><th>Phone</th>
-        <th>Driver<br>pick up</th><th>Center<br>Arrival</th><th>Time<br>Out</th><th>Home<br>Arrival</th><th>Driver<br>Initial</th>
-      </tr></thead>
-      <tbody>
-        ${drivers.map(d=>{
-          const {seats, trips} = getDriverCapacityInfo(d);
-          const tripChunks = splitIntoTrips(grouped[d]||[], seats, trips);
-          const tripLabel = ['第一趟','第二趟','第三趟','第四趟','第五趟'];
-          return tripChunks.map((chunk,i)=>`
-            <tr class="driver-group-row"><td colspan="10">${escapeHtml(d)}${tripChunks.length>1?` · ${tripLabel[i]||('第'+(i+1)+'趟')}`:''} · 共 ${chunk.length} 位</td></tr>
-            ${chunk.map(x=>`<tr>
-              <td>${escapeHtml(x.client.id)}</td>
-              <td>${escapeHtml(x.client.enName)}</td>
-              <td>${escapeHtml(x.client.cnName)}</td>
-              <td>${escapeHtml(x.client.address)}</td>
-              <td>${escapeHtml(x.client.phone)}</td>
-              <td></td><td></td><td></td><td></td><td></td>
-            </tr>`).join('')}
-            ${Array.from({length:SPARE_ROWS}).map(()=>`<tr class="spare-row"><td colspan="10">&nbsp;</td></tr>`).join('')}
-          `).join('');
-        }).join('')}
-      </tbody>
-    </table>`;
+    ${drivers.map(d=>{
+      const {seats, trips} = getDriverCapacityInfo(d);
+      const tripChunks = splitIntoTrips(grouped[d]||[], seats, trips);
+      return tripChunks.map((chunk,i)=>`
+        <div class="route-page">
+          <div class="route-title">Gentle Heart Daycare Center</div>
+          <div class="route-date-row">
+            <span>Date: ${fmtDateMDY(driverDate)}</span>
+            <span>${escapeHtml(d)}${tripChunks.length>1?` · ${tripLabel[i]||('第'+(i+1)+'趟')}`:''}</span>
+          </div>
+          <table class="route-table">
+            <colgroup>
+              <col class="col-mrid"><col class="col-name"><col class="col-cnname"><col class="col-address"><col class="col-phone">
+              <col class="col-fill"><col class="col-fill"><col class="col-fill"><col class="col-fill"><col class="col-fill">
+            </colgroup>
+            <thead><tr>
+              <th>MRID</th><th>Name</th><th>Chinese Name</th><th>Address</th><th>Phone</th>
+              <th>Driver<br>pick up</th><th>Center<br>Arrival</th><th>Time<br>Out</th><th>Home<br>Arrival</th><th>Driver<br>Initial</th>
+            </tr></thead>
+            <tbody>
+              ${chunk.map(x=>`<tr>
+                <td>${escapeHtml(x.client.id)}</td>
+                <td>${escapeHtml(x.client.enName)}</td>
+                <td>${escapeHtml(x.client.cnName)}</td>
+                <td>${escapeHtml(x.client.address)}</td>
+                <td>${escapeHtml(x.client.phone)}</td>
+                <td></td><td></td><td></td><td></td><td></td>
+              </tr>`).join('')}
+              ${Array.from({length:SPARE_ROWS}).map(()=>`<tr class="spare-row"><td colspan="10">&nbsp;</td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      `).join('');
+    }).join('')}`;
   openAndPrintDoc(`司機接送路線表_${driverDate}`, html, 'landscape');
  }catch(err){
     console.error('buildAndOpenDriverRoutes failed', err);
