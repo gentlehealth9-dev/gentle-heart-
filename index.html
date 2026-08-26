@@ -3054,10 +3054,13 @@ function buildGoogleMapsRouteUrl(stops){
   const clean = (stops||[]).map(a=>sanitizeAddressForMaps(a)).filter(Boolean);
   if(!clean.length) return null;
   const MAX_WAYPOINTS = 23; // Google Maps directions URL practical limit
-  const capped = clean.slice(0, MAX_WAYPOINTS + 1);
+  const capped = clean.slice(0, MAX_WAYPOINTS);
+  // Round trip: leave from the center and come back to the center, every
+  // stop in between is a waypoint — so the driver gets one link that
+  // covers the whole run, not just the way out.
   const origin = encodeURIComponent(CENTER_DEPOT_ADDRESS);
-  const destination = encodeURIComponent(capped[capped.length-1]);
-  const waypoints = capped.slice(0, -1).map(a=>encodeURIComponent(a)).join('|');
+  const destination = encodeURIComponent(CENTER_DEPOT_ADDRESS);
+  const waypoints = capped.map(a=>encodeURIComponent(a)).join('|');
   let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`;
   if(waypoints) url += `&waypoints=${waypoints}`;
   return url;
@@ -3246,7 +3249,7 @@ function renderDrivers(root){
           <div class="section-label" style="display:flex; justify-content:space-between; align-items:center;">
             <span>${escapeHtml(d)} <span class="badge ${OUTSOURCED_DRIVERS.includes(d)?'amber':'sage'}" style="font-size:10.5px;">${driverTypeLabel(d)}</span> · 共 ${(grouped[d]||[]).length} 位 ／ 上限 ${getDriverCapacity(d)} 位（${getDriverCapacityInfo(d).seats} 座 × ${getDriverCapacityInfo(d).trips} 趟） <button class="btn tiny ghost" style="padding:1px 6px;" title="設定此司機的車輛座位數與趟數" onclick="promptSetDriverCapacity('${escapeHtml(d)}')">✎</button>${(grouped[d]||[]).length>getDriverCapacity(d)? ` <span class="badge red" title="今日載量超過此司機的座位×趟數上限 ${getDriverCapacity(d)} 位，建議確認是否需要調整或加派">⚠ 載量偏高</span>`:''}</span>
             <span style="white-space:nowrap;">
-              <button class="btn tiny ghost" onclick="openDriverRouteInMaps('${escapeHtml(d)}')" title="用 Google 地圖規劃這位司機今天的路線（從中心出發，途經下面每一站）">🗺 開啟路線</button>
+              <button class="btn tiny ghost" onclick="openDriverRouteInMaps('${escapeHtml(d)}')" title="用 Google 地圖規劃這位司機今天的路線（從中心出發，途經下面每一站，最後回到中心）">🗺 開啟路線</button>
               <button class="btn tiny ghost" onclick="printOneDriver('${escapeHtml(d)}')">🖨 列印${escapeHtml(d)}</button>
             </span>
           </div>
