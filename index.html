@@ -2980,10 +2980,28 @@ function sortWithCouplesGrouped(schedArr){
 // shared address (Array.sort's stability keeps couples adjacent even
 // when they also share an address).
 function sortByAddressThenCouples(schedArr){
-  const couplesOrdered = sortWithCouplesGrouped(schedArr);
-  return couplesOrdered.slice().sort((a,b)=>
-    normalizeAddressForSort(a.client.address).localeCompare(normalizeAddressForSort(b.client.address))
-  );
+  // Same grouping approach as sortWithCouplesGrouped (group -> lowest ID in
+  // the group decides where the whole group sits), but grouped by address
+  // instead of relationship text. This keeps the list in its normal ID
+  // order overall and only pulls address-mates next to each other, rather
+  // than re-sorting everyone alphabetically by address (which scrambled the
+  // familiar ID ordering staff expect on the printed sheet).
+  const groups = {};
+  schedArr.forEach(x=>{
+    const key = normalizeAddressForSort(x.client.address);
+    (groups[key] = groups[key]||[]).push(x.client.id);
+  });
+  const groupMinRank = {};
+  schedArr.forEach(x=>{
+    const key = normalizeAddressForSort(x.client.address);
+    const ids = groups[key];
+    groupMinRank[x.client.id] = ids.reduce((min,id)=> idCompare(id,min)<0 ? id : min, ids[0]);
+  });
+  return schedArr.slice().sort((a,b)=>{
+    const gc = idCompare(groupMinRank[a.client.id], groupMinRank[b.client.id]);
+    if(gc !== 0) return gc;
+    return idCompare(a.client.id, b.client.id);
+  });
 }
 
 function printSignIn(){
