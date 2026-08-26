@@ -3050,18 +3050,31 @@ function sanitizeAddressForMaps(addr){
   a = a.replace(/\s+/g,' ').replace(/,\s*,/g, ',').replace(/^[,\s]+|[,\s]+$/g, '').trim();
   return a;
 }
+// encodeURIComponent alone leaves spaces as %20, which some builds of the
+// Google Maps app show as raw literal text in the origin/destination boxes
+// instead of decoding them into the address — using "+" (the standard
+// application/x-www-form-urlencoded style Google's own URL examples use)
+// avoids that.
+function mapsEncode(str){
+  return encodeURIComponent(str).replace(/%20/g, '+');
+}
 function buildGoogleMapsRouteUrl(stops){
   const clean = (stops||[]).map(a=>sanitizeAddressForMaps(a)).filter(Boolean);
   if(!clean.length) return null;
   const MAX_WAYPOINTS = 23; // Google Maps directions URL practical limit
   const capped = clean.slice(0, MAX_WAYPOINTS);
-  // Round trip: leave from the center and come back to the center, every
-  // stop in between is a waypoint — so the driver gets one link that
-  // covers the whole run, not just the way out.
-  const origin = encodeURIComponent(CENTER_DEPOT_ADDRESS);
-  const destination = encodeURIComponent(CENTER_DEPOT_ADDRESS);
-  const waypoints = capped.map(a=>encodeURIComponent(a)).join('|');
-  let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`;
+  // Round trip back to the center, every stop in between is a waypoint —
+  // one link covers the whole run, not just the way out.
+  //
+  // No "origin" param on purpose: per Google's Maps URL docs, dir_action=navigate
+  // only auto-launches turn-by-turn navigation when the origin is the device's
+  // current location (omitted, or close to it) — a fixed origin address always
+  // falls back to a route-preview screen that needs a manual "Start" tap. Since
+  // drivers open this from wherever they actually are, leaving origin out is what
+  // gets them real one-tap navigation.
+  const destination = mapsEncode(CENTER_DEPOT_ADDRESS);
+  const waypoints = capped.map(a=>mapsEncode(a)).join('|');
+  let url = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving&dir_action=navigate`;
   if(waypoints) url += `&waypoints=${waypoints}`;
   return url;
 }
@@ -3096,7 +3109,7 @@ function showDriverRouteModal(driverName, url, stopCount){
       </div>
       <div class="modal-body">
         <div style="font-size:12.5px; color:var(--ink-soft); margin-bottom:10px;">
-          點開後會先看到整趟路線的總覽（因為中途有多站，Google 地圖沒辦法直接自動開始導航），請在地圖 App 裡按一下「開始／Start」就會進入語音導航。<br>
+          司機手機要開定位，點開後 Google 地圖通常會直接開始導航；如果只看到路線總覽沒有自動開始，在地圖 App 裡按一下「開始／Start」就可以了。<br>
           如果按鈕沒反應（有些瀏覽器會擋自動開新視窗），可以直接點下面的連結，或用「複製連結」貼到瀏覽器/手機地圖 App 開啟。
         </div>
         <div style="margin-bottom:10px;">
