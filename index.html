@@ -3297,11 +3297,13 @@ function setDriverFilter(d){ driverFilter=d; render(); }
 function setDriverDate(offsetDays){ driverDate = addDays(todayStr(), offsetDays); render(); }
 function printOneDriver(driverName){ buildAndOpenDriverRoutes([driverName]); }
 
-// A big-font, single-screen "route card" meant to be screenshotted (not
-// printed) and sent straight to the driver over WeChat — just who to pick
-// up, in order, with address and phone. None of the office-only tracking
-// columns from the printed sheet (those are for the paper record, not the
-// driver's phone).
+// Same "Gentle Heart Daycare Center" route-page layout as the printed
+// sheet (see buildDriverPageHtml/ROUTE_PAGE_STYLE) — a real bordered
+// table matching the center's classic paper form — but shown inline in a
+// modal to be screenshotted and sent straight to the driver over WeChat,
+// instead of opened in a print dialog. Skips the blank office-tracking
+// columns (Driver pick up / Center Arrival / etc.) since those are for
+// the paper record, not something meaningful in a phone screenshot.
 function openDriverShareCard(driverName){
   const wd = weekdayKeyOf(driverDate);
   if(!wd){ showToast('週末無排班'); return; }
@@ -3313,7 +3315,6 @@ function openDriverShareCard(driverName){
 
   const {seats, trips} = getDriverCapacityInfo(driverName);
   const tripChunks = splitIntoTrips(sched, seats, trips);
-  const tripLabel = ['第一趟','第二趟','第三趟','第四趟','第五趟'];
 
   const existing = document.getElementById('shareCardOverlay');
   if(existing) existing.remove();
@@ -3321,7 +3322,15 @@ function openDriverShareCard(driverName){
   overlay.className = 'overlay';
   overlay.id = 'shareCardOverlay';
   overlay.innerHTML = `
-    <div class="modal" style="width:min(96vw, 720px);">
+    <style>
+      ${ROUTE_PAGE_STYLE}
+      #shareCardContent table.route-table{font-size:18px;}
+      #shareCardContent table.route-table th{font-size:15px;}
+      #shareCardContent table.route-table th,#shareCardContent table.route-table td{padding:12px 10px;}
+      #shareCardContent .route-title{font-size:24px;}
+      #shareCardContent .route-date-row{font-size:16px;}
+    </style>
+    <div class="modal" style="width:min(97vw, 900px);">
       <div class="modal-head">
         <h3>${escapeHtml(driverName)} 的路線卡</h3>
         <button class="x-close" onclick="document.getElementById('shareCardOverlay').remove()">✕</button>
@@ -3331,29 +3340,7 @@ function openDriverShareCard(driverName){
           把下面這張表完整截圖，傳給司機就可以了。
         </div>
         <div id="shareCardContent" style="background:#fff; border:1px solid #ddd; border-radius:10px; padding:16px; color:#1a1a1a;">
-          <div style="text-align:center; font-family:'Noto Serif TC',serif; font-weight:700; font-size:20px; margin-bottom:2px;">${escapeHtml(driverName)} 的路線</div>
-          <div style="text-align:center; font-size:15px; color:#555; margin-bottom:12px;">${fmtDateMDY(driverDate)}（${fmtDateHuman(driverDate).match(/（(.*)）/)?.[1]||''}）</div>
-          ${tripChunks.map((chunk,ti)=>`
-            ${tripChunks.length>1? `<div style="font-size:16px; font-weight:700; background:#F0EBDD; padding:5px 10px; border-radius:6px; margin:10px 0 8px;">${tripLabel[ti]||('第'+(ti+1)+'趟')}</div>`:''}
-            <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
-              <colgroup><col style="width:8%;"><col style="width:26%;"><col style="width:44%;"><col style="width:22%;"></colgroup>
-              <thead><tr style="background:#33565A; color:#fff;">
-                <th style="padding:8px 6px; font-size:14px; text-align:center;">#</th>
-                <th style="padding:8px 6px; font-size:14px; text-align:left;">姓名</th>
-                <th style="padding:8px 6px; font-size:14px; text-align:left;">地址</th>
-                <th style="padding:8px 6px; font-size:14px; text-align:left;">電話</th>
-              </tr></thead>
-              <tbody>
-                ${chunk.map((x,i)=>`<tr style="border-bottom:1px solid #e0e0e0;">
-                  <td style="padding:9px 6px; text-align:center; font-size:17px; font-weight:700; color:#555;">${i+1}</td>
-                  <td style="padding:9px 6px;"><div style="font-size:19px; font-weight:700; line-height:1.25;">${escapeHtml(x.client.cnName)}</div><div style="font-size:13px; color:#666;">${escapeHtml(x.client.enName)}</div></td>
-                  <td style="padding:9px 6px; font-size:15px; word-wrap:break-word;">${escapeHtml(x.client.address)}</td>
-                  <td style="padding:9px 6px; font-size:15px;">${escapeHtml(x.client.phone)}</td>
-                </tr>`).join('')}
-              </tbody>
-            </table>
-          `).join('')}
-          <div style="text-align:center; font-size:13px; color:#888; margin-top:12px; padding-top:10px; border-top:1px dashed #ccc;">出發／返回：${escapeHtml(CENTER_DEPOT_ADDRESS)}</div>
+          ${tripChunks.map((chunk,i)=> buildDriverPageHtml(driverName, chunk, i, tripChunks.length, {spareRows:0, includeTracking:false})).join('')}
         </div>
       </div>
       <div class="modal-foot">
@@ -3455,6 +3442,69 @@ function splitIntoTrips(entries, seats, trips){
   return result;
 }
 
+// Shared "Gentle Heart Daycare Center" route-page layout — modeled on the
+// center's original paper route sheet — used both for the printed office
+// sheet (buildAndOpenDriverRoutes, with the office-tracking columns and
+// spare rows) and the on-screen share card (openDriverShareCard, without
+// them, since blank checkboxes are meaningless in a screenshot sent to a
+// driver's phone).
+const ROUTE_PAGE_STYLE = `
+  .route-page{page-break-after:always;}
+  .route-page:last-child{page-break-after:auto;}
+  table.route-table{width:100%; border-collapse:collapse; font-size:14.5px; table-layout:fixed; margin-top:8px;}
+  table.route-table th,table.route-table td{border:1px solid #888; padding:9px 10px; text-align:left; word-wrap:break-word;}
+  table.route-table th{background:#F0EBDD; font-size:13px; font-weight:700;}
+  table.route-table thead{display:table-header-group;}
+  table.route-table tr{page-break-inside:avoid;}
+  col.col-mrid{width:6%;}
+  col.col-name{width:13%;}
+  col.col-cnname{width:10%;}
+  col.col-address{width:27%;}
+  col.col-phone{width:11%;}
+  col.col-fill{width:8.25%;}
+  .route-title{text-align:center; font-family:'Noto Serif TC',serif; font-size:22px; font-weight:700; margin:0 0 10px;}
+  .route-date-row{display:flex; justify-content:space-between; align-items:baseline; font-size:14.5px; font-weight:700; border-bottom:2px solid #333; padding-bottom:6px; margin-bottom:2px;}
+  .spare-row td{color:#bbb; height:26px;}
+`;
+const DRIVER_ROUTE_TRIP_LABELS = ['第一趟','第二趟','第三趟','第四趟','第五趟'];
+function buildDriverPageHtml(driverName, chunk, tripIndex, tripCount, opts){
+  opts = opts || {};
+  const spareRows = opts.spareRows || 0;
+  const includeTracking = opts.includeTracking !== false;
+  const colCount = includeTracking ? 10 : 5;
+  return `
+    <div class="route-page">
+      <div class="route-title">Gentle Heart Daycare Center</div>
+      <div class="route-date-row">
+        <span>Date: ${fmtDateMDY(driverDate)}</span>
+        <span>${escapeHtml(driverName)}${tripCount>1?` · ${DRIVER_ROUTE_TRIP_LABELS[tripIndex]||('第'+(tripIndex+1)+'趟')}`:''}</span>
+      </div>
+      <table class="route-table">
+        <colgroup>
+          ${includeTracking
+            ? '<col class="col-mrid"><col class="col-name"><col class="col-cnname"><col class="col-address"><col class="col-phone"><col class="col-fill"><col class="col-fill"><col class="col-fill"><col class="col-fill"><col class="col-fill">'
+            : '<col style="width:8%;"><col style="width:15%;"><col style="width:13%;"><col style="width:44%;"><col style="width:20%;">'}
+        </colgroup>
+        <thead><tr>
+          <th>MRID</th><th>Name</th><th>Chinese Name</th><th>Address</th><th>Phone</th>
+          ${includeTracking? '<th>Driver<br>pick up</th><th>Center<br>Arrival</th><th>Time<br>Out</th><th>Home<br>Arrival</th><th>Driver<br>Initial</th>':''}
+        </tr></thead>
+        <tbody>
+          ${chunk.map(x=>`<tr>
+            <td>${escapeHtml(x.client.id)}</td>
+            <td>${escapeHtml(x.client.enName)}</td>
+            <td>${escapeHtml(x.client.cnName)}</td>
+            <td>${escapeHtml(x.client.address)}</td>
+            <td>${escapeHtml(x.client.phone)}</td>
+            ${includeTracking? '<td></td><td></td><td></td><td></td><td></td>':''}
+          </tr>`).join('')}
+          ${spareRows>0? Array.from({length:spareRows}).map(()=>`<tr class="spare-row"><td colspan="${colCount}">&nbsp;</td></tr>`).join(''):''}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
 function buildAndOpenDriverRoutes(driversOverride){
  try{
   const sched = getScheduledForDate(driverDate).filter(x=>x.client.transportMode==='company');
@@ -3473,60 +3523,12 @@ function buildAndOpenDriverRoutes(driversOverride){
     return;
   }
 
-  const tripLabel = ['第一趟','第二趟','第三趟','第四趟','第五趟'];
-
   const html = `
-    <style>
-      .route-page{page-break-after:always;}
-      .route-page:last-child{page-break-after:auto;}
-      table.route-table{width:100%; border-collapse:collapse; font-size:14.5px; table-layout:fixed; margin-top:8px;}
-      table.route-table th,table.route-table td{border:1px solid #888; padding:9px 10px; text-align:left; word-wrap:break-word;}
-      table.route-table th{background:#F0EBDD; font-size:13px; font-weight:700;}
-      table.route-table thead{display:table-header-group;}
-      table.route-table tr{page-break-inside:avoid;}
-      col.col-mrid{width:6%;}
-      col.col-name{width:13%;}
-      col.col-cnname{width:10%;}
-      col.col-address{width:27%;}
-      col.col-phone{width:11%;}
-      col.col-fill{width:8.25%;}
-      .route-title{text-align:center; font-family:'Noto Serif TC',serif; font-size:22px; font-weight:700; margin:0 0 10px;}
-      .route-date-row{display:flex; justify-content:space-between; align-items:baseline; font-size:14.5px; font-weight:700; border-bottom:2px solid #333; padding-bottom:6px; margin-bottom:2px;}
-      .spare-row td{color:#bbb; height:26px;}
-    </style>
+    <style>${ROUTE_PAGE_STYLE}</style>
     ${drivers.map(d=>{
       const {seats, trips} = getDriverCapacityInfo(d);
       const tripChunks = splitIntoTrips(grouped[d]||[], seats, trips);
-      return tripChunks.map((chunk,i)=>`
-        <div class="route-page">
-          <div class="route-title">Gentle Heart Daycare Center</div>
-          <div class="route-date-row">
-            <span>Date: ${fmtDateMDY(driverDate)}</span>
-            <span>${escapeHtml(d)}${tripChunks.length>1?` · ${tripLabel[i]||('第'+(i+1)+'趟')}`:''}</span>
-          </div>
-          <table class="route-table">
-            <colgroup>
-              <col class="col-mrid"><col class="col-name"><col class="col-cnname"><col class="col-address"><col class="col-phone">
-              <col class="col-fill"><col class="col-fill"><col class="col-fill"><col class="col-fill"><col class="col-fill">
-            </colgroup>
-            <thead><tr>
-              <th>MRID</th><th>Name</th><th>Chinese Name</th><th>Address</th><th>Phone</th>
-              <th>Driver<br>pick up</th><th>Center<br>Arrival</th><th>Time<br>Out</th><th>Home<br>Arrival</th><th>Driver<br>Initial</th>
-            </tr></thead>
-            <tbody>
-              ${chunk.map(x=>`<tr>
-                <td>${escapeHtml(x.client.id)}</td>
-                <td>${escapeHtml(x.client.enName)}</td>
-                <td>${escapeHtml(x.client.cnName)}</td>
-                <td>${escapeHtml(x.client.address)}</td>
-                <td>${escapeHtml(x.client.phone)}</td>
-                <td></td><td></td><td></td><td></td><td></td>
-              </tr>`).join('')}
-              ${Array.from({length:SPARE_ROWS}).map(()=>`<tr class="spare-row"><td colspan="10">&nbsp;</td></tr>`).join('')}
-            </tbody>
-          </table>
-        </div>
-      `).join('');
+      return tripChunks.map((chunk,i)=> buildDriverPageHtml(d, chunk, i, tripChunks.length, {spareRows:SPARE_ROWS, includeTracking:true})).join('');
     }).join('')}`;
   openAndPrintDoc(`司機接送路線表_${driverDate}`, html, 'landscape');
  }catch(err){
