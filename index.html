@@ -1117,6 +1117,14 @@ function renderDashboard(root){
   const isToday = today===todayStr();
   const isTomorrow = today===addDays(todayStr(),1);
 
+  // Company-pickup people scheduled today with nobody assigned to drive them —
+  // easy to miss until someone actually opens the driver page.
+  const noDriverToday = sched.filter(x=>x.client.transportMode==='company' && !x.client.driver && !x.client.visitor);
+  // Active, non-visitor, non-ERS members whose transport mode was never set at
+  // all (not date-specific — a data-completeness gap, same one flagged earlier
+  // when checking "未設定" members by hand).
+  const unsetTransport = CLIENTS.filter(c=>c.status==='active' && !c.visitor && !c.ers && !c.transportMode);
+
   root.innerHTML = `
     <div class="topbar">
       <div>
@@ -1169,13 +1177,15 @@ function renderDashboard(root){
       </div>
       <div class="card card-pad">
         <div class="section-label">需要留意事項</div>
+        ${noDriverToday.length? noDriverToday.map(x=>`<div class="hist-item"><span>${clientLabel(x.client)} 今天公司接送但<b>未指派司機</b></span><span class="meta"><a href="#" onclick="setTab('drivers');return false;" style="color:var(--teal);">前往處理 →</a></span></div>`).join(''):''}
         ${pending.length? `<div class="hist-item"><span>有 <b>${pending.length}</b> 位會員尚未設定固定排班（狀態：待安排）</span><span class="meta"><a href="#" onclick="setTab('members');return false;" style="color:var(--teal);">前往處理 →</a></span></div>`:''}
+        ${unsetTransport.length? `<div class="hist-item"><span>有 <b>${unsetTransport.length}</b> 位在籍會員接送方式未設定</span><span class="meta"><a href="#" onclick="setTab('members');return false;" style="color:var(--teal);">前往處理 →</a></span></div>`:''}
         ${leaveToday.length? leaveToday.map(e=>{
           const c = getClient(e.clientId); if(!c) return '';
           return `<div class="hist-item"><span>${clientLabel(c)} 請假${e.note? '：'+escapeHtml(e.note):''}</span><span class="meta">${wd?DAY_LABEL_FULL[wd]:''}</span></div>`;
         }).join(''):''}
         ${overQuota.length? overQuota.map(o=>`<div class="hist-item"><span>${clientLabel(o.c)} 本週已到 <b>${o.u.count}</b> 天，超過核准 <b>${o.c.insuranceDaysPerWeek}</b> 天</span><span class="meta note-flag">請確認保險</span></div>`).join(''):''}
-        ${(!pending.length && !leaveToday.length && !overQuota.length) ? '<div style="color:var(--ink-soft);">目前沒有需要留意的事項。</div>':''}
+        ${(!noDriverToday.length && !pending.length && !unsetTransport.length && !leaveToday.length && !overQuota.length) ? '<div style="color:var(--ink-soft);">目前沒有需要留意的事項。</div>':''}
       </div>
     </div>
 
