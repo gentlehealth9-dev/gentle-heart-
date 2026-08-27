@@ -2888,9 +2888,16 @@ function renderWeekly(root){
         <div class="card card-pad" style="${isToday? 'border-color:var(--teal); background:#F6FAF9;':''}">
           <div class="section-label" style="margin-top:0; display:flex; justify-content:space-between; align-items:baseline;">
             <span>${DAY_LABEL_FULL[wd]}</span>
-            <span style="font-size:11px; color:var(--ink-soft); font-weight:400; text-transform:none; letter-spacing:0;">${dateStr.slice(5)}${isToday?'（今天）':''}</span>
+            <span style="display:flex; align-items:baseline; gap:6px;">
+              <span style="font-size:11px; color:var(--ink-soft); font-weight:400; text-transform:none; letter-spacing:0;">${dateStr.slice(5)}${isToday?'（今天）':''}</span>
+              <button class="btn tiny ghost no-print" title="只列印${DAY_LABEL_FULL[wd]}這一天" onclick="printWeeklyOneDay('${dateStr}')" style="padding:2px 6px;">🖨</button>
+            </span>
           </div>
           <div style="font-size:11px; color:var(--ink-soft); margin-bottom:8px;">固定 ${baseline.length} 位${extras.length? ` ・加開 ${extras.length} 位`:''}</div>
+          <div style="display:flex; gap:6px; margin-bottom:8px;">
+            <input type="text" id="weeklyCheckInput_${dateStr}" list="weeklyClientDatalist" placeholder="輸入編號查誰這天有沒有來…" style="flex:1; font-size:12px; padding:5px 6px;" onkeydown="if(event.key==='Enter'){checkAttendanceForDate('${dateStr}');}">
+            <button class="btn tiny ghost" onclick="checkAttendanceForDate('${dateStr}')">🔍 查</button>
+          </div>
           ${!baseline.length && !extras.length ? '<div style="color:var(--ink-soft); font-size:12.5px;">這天沒有固定來的會員。</div>' : ''}
           ${baseline.map(c=>{
             const onLeave = leaveByClient[c.id];
@@ -2945,6 +2952,62 @@ async function addExtraForDate(dateStr){
   if(input) input.value = '';
   showToast(`已將 ${clientLabel(c)} 加入名單，簽到表會自動同步更新（無論司機接送或Uber／自駕）`);
   render();
+}
+
+function checkAttendanceForDate(dateStr){
+  const input = document.getElementById(`weeklyCheckInput_${dateStr}`);
+  const raw = input ? input.value.trim() : '';
+  if(!raw) return;
+  const c = getClient(raw);
+  if(!c){ showToast(`找不到編號 ${raw} 的會員`); return; }
+  const wd = weekdayKeyOf(dateStr);
+  const dayLabel = `${DAY_LABEL_FULL[wd]}（${dateStr.slice(5)}）`;
+  const dayExceptions = EXCEPTIONS[dateStr] || [];
+  const leaveEntry = dayExceptions.find(e=>e.type==='leave' && e.clientId===c.id);
+  const extraEntry = dayExceptions.find(e=>e.type==='extra' && e.clientId===c.id);
+  const isBaseline = c.status==='active' && c.baselineDays.includes(wd);
+
+  let msg;
+  if(c.ers){
+    msg = `⚠️ ${clientLabel(c)} 是ERS會員，不會出現在固定班表／簽到表，只會出現在廚房單上`;
+  } else if(extraEntry){
+    msg = `✅ ${clientLabel(c)}　${dayLabel}會來（臨時加開）`;
+  } else if(isBaseline && !leaveEntry){
+    msg = `✅ ${clientLabel(c)}　${dayLabel}會來（固定班）`;
+  } else if(isBaseline && leaveEntry){
+    msg = `❌ ${clientLabel(c)}　${dayLabel}請假中，這天不會來${leaveEntry.note? '（'+leaveEntry.note+'）':''}`;
+  } else {
+    msg = `— ${clientLabel(c)}　${dayLabel}沒有排班，不在這天的名單中`;
+  }
+  showToast(msg);
+}
+
+function printWeeklyOneDay(dateStr){
+ try{
+  const wd = weekdayKeyOf(dateStr);
+  const sorted = sortWithCouplesGrouped(getScheduledForDate(dateStr));
+  const html = `
+    <div style="text-align:center; margin-bottom:14px;">
+      <div class="print-title" style="font-size:24px; margin-bottom:2px;">${DAY_LABEL_FULL[wd]}</div>
+      <div class="print-sub">${fmtDateHuman(dateStr)}　共 ${sorted.length} 位</div>
+    </div>
+    <table class="sig-table">
+      <thead><tr><th style="width:50px;">編號</th><th>英文姓名</th><th>中文姓名</th><th style="width:70px;">狀態</th><th style="width:140px;">備註</th></tr></thead>
+      <tbody>
+        ${sorted.length ? sorted.map(({client,isExtra,note})=>`<tr>
+          <td>${escapeHtml(client.id)}</td>
+          <td>${escapeHtml(client.enName)}</td>
+          <td>${escapeHtml(client.cnName)}</td>
+          <td>${isExtra? '<span style="color:#8C6318;">加開</span>':'固定'}</td>
+          <td>${escapeHtml(note||'')}</td>
+        </tr>`).join('') : `<tr><td colspan="5" style="text-align:center;color:#777;">這天沒有排班</td></tr>`}
+      </tbody>
+    </table>`;
+  openAndPrintDoc(`固定班表_${DAY_LABEL_FULL[wd]}_${dateStr}`, html, 'portrait');
+ }catch(err){
+  console.error('printWeeklyOneDay failed', err);
+  showToast('產生單日班表時發生錯誤：'+(err && err.message ? err.message : err));
+ }
 }
 
 function printWeekly(){
