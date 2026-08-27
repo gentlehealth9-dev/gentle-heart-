@@ -2877,6 +2877,9 @@ function renderWeekly(root){
         <button class="btn ghost" onclick="printWeekly()">🖨 列印本週班表</button>
       </div>
     </div>
+    <datalist id="weeklyClientDatalist">
+      ${CLIENTS.filter(c=>c.status==='active' && !c.ers).sort((a,b)=>idCompare(a.id,b.id)).map(c=>`<option value="${escapeHtml(c.id)}">${escapeHtml(c.enName)}／${escapeHtml(c.cnName)}</option>`).join('')}
+    </datalist>
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:14px; align-items:start;">
       ${dates.map(dateStr=>{
         const {wd, baseline, leaveByClient, extras} = buildWeeklyDayData(dateStr);
@@ -2907,10 +2910,7 @@ function renderWeekly(root){
             </div>
           `).join('')}
           <div style="display:flex; gap:6px; margin-top:10px;">
-            <select id="weeklyExtraSelect_${dateStr}" style="flex:1; font-size:12px; padding:5px 6px;">
-              <option value="">＋ 加開會員…</option>
-              ${CLIENTS.filter(c=>c.status==='active' && !c.ers).sort((a,b)=>a.enName.localeCompare(b.enName)).map(c=>`<option value="${escapeHtml(c.id)}">${escapeHtml(c.enName)}／${escapeHtml(c.cnName)}（${escapeHtml(c.id)}）</option>`).join('')}
-            </select>
+            <input type="text" id="weeklyExtraInput_${dateStr}" list="weeklyClientDatalist" placeholder="輸入編號搜尋加開會員…" style="flex:1; font-size:12px; padding:5px 6px;" onkeydown="if(event.key==='Enter'){addExtraForDate('${dateStr}');}">
             <button class="btn tiny" onclick="addExtraForDate('${dateStr}')">加入</button>
           </div>
         </div>`;
@@ -2932,14 +2932,18 @@ async function removeExtraForDate(excId, dateStr){
   render();
 }
 async function addExtraForDate(dateStr){
-  const sel = document.getElementById(`weeklyExtraSelect_${dateStr}`);
-  const id = sel ? sel.value : '';
-  if(!id) return;
+  const input = document.getElementById(`weeklyExtraInput_${dateStr}`);
+  const raw = input ? input.value.trim() : '';
+  if(!raw) return;
+  const c = getClient(raw);
+  if(!c){ showToast(`找不到編號 ${raw} 的會員`); return; }
+  const id = c.id;
   const already = getScheduledForDate(dateStr).some(x=>x.client.id===id);
   if(already){ showToast('此會員這天已在名單中'); return; }
   addException(dateStr, {clientId:id, type:'extra', note:'臨時加開'});
   await saveExceptions();
-  showToast('已加入名單');
+  if(input) input.value = '';
+  showToast(`已將 ${clientLabel(c)} 加入名單，簽到表會自動同步更新（無論司機接送或Uber／自駕）`);
   render();
 }
 
