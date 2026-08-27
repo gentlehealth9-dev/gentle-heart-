@@ -1884,6 +1884,10 @@ function openMemberModal(id, isVisitorMode){
           <div style="grid-column: 1 / -1;">
             <button type="button" class="btn ghost sm" onclick="convertVisitorToMember()">↑ 轉為正式會員</button>
             <span style="font-size:11.5px; color:var(--ink-soft); margin-left:8px;">會取消訪客標記，並提醒你補上排班星期、司機、保險天數</span>
+            <div style="margin-top:8px;">
+              <button type="button" class="btn ghost sm" onclick="printVisitorToMemberForm('${escapeHtml(c.id)}')">🖨 列印轉會員資料表</button>
+              <span style="font-size:11.5px; color:var(--ink-soft); margin-left:8px;">列印一張表格，讓家屬/訪客手填社會安全碼、白卡、紅藍卡、緊急聯絡人等資料</span>
+            </div>
           </div>
           ` : ''}
         </div>
@@ -3222,6 +3226,55 @@ function printUberWaiver(){
  }catch(err){
   console.error('printUberWaiver failed', err);
   showToast('產生免責簽到表時發生錯誤：'+(err && err.message ? err.message : err));
+ }
+}
+
+function printVisitorToMemberForm(clientId){
+ try{
+  const c = clientId ? getClient(clientId) : null;
+  const blank = (n) => '＿'.repeat(n||14);
+  const tblStyle = 'width:100%; border-collapse:collapse; font-size:15px; margin:0 0 18px;';
+  const thStyle = 'border:1px solid #000; padding:8px 10px; text-align:left; font-weight:700; width:34%; vertical-align:middle;';
+  const tdStyle = 'border:1px solid #000; padding:8px 10px; text-align:left; vertical-align:middle;';
+  const sectionStyle = 'font-weight:700; font-size:14.5px; margin:14px 0 6px; color:#000;';
+  const row = (label, value, opts) => {
+    opts = opts || {};
+    const filled = value ? escapeHtml(value) : blank(opts.blankLen);
+    return `<tr><th style="${thStyle}">${label}</th><td style="${tdStyle} height:${opts.tall?'46px':'30px'};">${filled}</td></tr>`;
+  };
+  const html = `
+    <div style="text-align:center; margin-bottom:14px;">
+      <div class="print-title" style="font-size:19px; margin-bottom:2px;">訪客轉正式會員資料表</div>
+      <div style="font-size:12.5px; font-weight:700; letter-spacing:.03em; color:#333;">NEW MEMBER CONVERSION — REQUIRED INFORMATION</div>
+    </div>
+    <div style="${sectionStyle}">一、基本資料　PARTICIPANT INFORMATION</div>
+    <table style="${tblStyle}"><tbody>
+      ${row('會員編號　ID', c && c.id)}
+      ${row('中文姓名', c && c.cnName)}
+      ${row('英文姓名　English Name', c && c.enName)}
+      ${row('個人電話　Phone', c && c.phone)}
+    </tbody></table>
+    <div style="${sectionStyle}">二、白卡及醫療保險　MEDI-CAL &amp; HEALTH INSURANCE</div>
+    <table style="${tblStyle}"><tbody>
+      ${row('社會安全碼　SSN', '')}
+      ${row('白卡（醫保卡）　Medi-Cal Card #', '')}
+      ${row('紅藍卡　Medicare Card #', '')}
+    </tbody></table>
+    <div style="${sectionStyle}">三、緊急聯絡人　EMERGENCY CONTACT</div>
+    <table style="${tblStyle}"><tbody>
+      ${row('姓名　Name', '')}
+      ${row('地址　Address', '', {tall:true})}
+      ${row('電話　Phone', '')}
+    </tbody></table>
+    <div style="display:flex; justify-content:space-between; font-size:13px; margin-top:22px;">
+      <span>填表人簽字 Signature：${blank(16)}</span>
+      <span>日期 Date：${blank(10)}</span>
+    </div>
+    <div style="text-align:center; font-size:10.5px; color:#777; margin-top:26px; border-top:1px solid #ccc; padding-top:6px;">Gentle Heart Daycare Center | 訪客轉會員資料表</div>`;
+  openAndPrintDoc(`訪客轉會員資料表${c?'_'+c.id:''}`, html, 'portrait');
+ }catch(err){
+  console.error('printVisitorToMemberForm failed', err);
+  showToast('產生轉會員資料表時發生錯誤：'+(err && err.message ? err.message : err));
  }
 }
 
