@@ -4122,7 +4122,7 @@ function renderKitchen(root){
       <div class="actions" style="display:flex; gap:8px; align-items:center;">
         ${renderTopbarDateButton('kitchen')}
         <button class="btn ghost" onclick="printKitchen()">🖨 列印廚房單</button>
-        <button class="btn ghost" onclick="printSpecialDiet()">🖨 特殊飲食需求總表</button>
+        <button class="btn ghost" onclick="printSpecialDiet()">🖨 特殊飲食分類單（依日期）</button>
       </div>
     </div>
 
@@ -4185,7 +4185,7 @@ function printKitchen(){
 }
 
 // Categories parsed out of the freeform dietary field, for a
-// members-wide reference sheet (not scoped to any one day's schedule).
+// scoped to whichever day the kitchen tab is currently showing, same as printKitchen.
 const SPECIAL_DIET_CATEGORIES = [
   {label:'饅頭', re:/饅頭|馒头/},
   {label:'糙米', re:/糙米/},
@@ -4198,15 +4198,16 @@ const SPECIAL_DIET_CATEGORIES = [
 ];
 function printSpecialDiet(){
  try{
-  const eligible = CLIENTS.filter(c=>c.status==='active' && c.dietary && c.dietary.trim());
+  const sched = getScheduledForDate(kitchenDate, {includeErs:true});
+  const eligible = sched.map(x=>x.client).filter(c=>c.dietary && c.dietary.trim());
   const groups = SPECIAL_DIET_CATEGORIES.map(cat=>({
     label: cat.label,
     clients: eligible.filter(c=>cat.re.test(c.dietary)).sort((a,b)=>idCompare(a.id,b.id)),
   })).filter(g=>g.clients.length);
 
   const html = `
-    <div class="print-title">特殊飲食需求總表</div>
-    <div class="print-sub">依會員資料中的飲食欄位分類，非單日排班名單 · 共 ${eligible.length} 位會員有特殊飲食記錄</div>
+    <div class="print-title">特殊飲食需求單</div>
+    <div class="print-sub">${fmtDateHuman(kitchenDate)} · 今日用餐 ${sched.length} 人，依飲食分類 · 共 ${eligible.length} 位有特殊飲食記錄</div>
     ${groups.length ? groups.map(g=>`
       <div style="margin-top:14px; page-break-inside:avoid;">
         <div style="font-family:'Noto Serif TC',serif; font-weight:700; font-size:16px; background:#F0EBDD; padding:6px 10px; border-radius:6px;">${escapeHtml(g.label)}　共 ${g.clients.length} 位</div>
@@ -4222,9 +4223,9 @@ function printSpecialDiet(){
           </tbody>
         </table>
       </div>
-    `).join('') : `<div class="empty-state" style="margin-top:20px;"><div class="big">🍽️</div>目前沒有會員記錄特殊飲食需求。</div>`}
+    `).join('') : `<div class="empty-state" style="margin-top:20px;"><div class="big">🍽️</div>今天沒有需要特殊飲食的會員。</div>`}
   `;
-  openAndPrintDoc('特殊飲食需求總表', html, 'portrait');
+  openAndPrintDoc(`特殊飲食需求單_${kitchenDate}`, html, 'portrait');
  }catch(err){
   console.error('printSpecialDiet failed', err);
   showToast('產生特殊飲食需求總表時發生錯誤：'+(err && err.message ? err.message : err));
