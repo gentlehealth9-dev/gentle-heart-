@@ -294,6 +294,7 @@ body.print-mode-active .print-preview-pane{display:block;}
       <li><button data-tab="drivers"><span class="ico">◆</span>司機接送路線</button></li>
       <li><button data-tab="kitchen"><span class="ico">◆</span>廚房飲食需求</button></li>
       <li><button data-tab="insurance"><span class="ico">◆</span>保險天數追蹤</button></li>
+      <li><button data-tab="admission"><span class="ico">◆</span>新會員入會申請表</button></li>
     </ul>
     <div class="side-foot">資料共用於辦公室所有使用者<br>最後同步：<span id="lastSync">—</span><br>版本：v2026-08-20-print3
       <button class="btn tiny ghost" style="width:100%; justify-content:center; margin-top:8px; color:#D9D1BF; border-color:#4A6163;" onclick="manualRefresh()">🔄 重新整理資料</button>
@@ -1091,6 +1092,7 @@ function render(){
   if(CURRENT_TAB==='drivers') return renderDrivers(root);
   if(CURRENT_TAB==='kitchen') return renderKitchen(root);
   if(CURRENT_TAB==='insurance') return renderInsurance(root);
+  if(CURRENT_TAB==='admission') return renderAdmissionPacket(root);
 }
 
 /* =========================================================
@@ -3275,6 +3277,227 @@ function printVisitorToMemberForm(clientId){
  }catch(err){
   console.error('printVisitorToMemberForm failed', err);
   showToast('產生轉會員資料表時發生錯誤：'+(err && err.message ? err.message : err));
+ }
+}
+
+function renderAdmissionPacket(root){
+  root.innerHTML = `
+    <div class="topbar">
+      <div>
+        <div class="page-title">新會員入會申請表</div>
+        <div class="page-sub">New Participant Admission Packet — 完整紙本入會流程文件，可直接列印給新會員/家屬及經辦人員使用</div>
+      </div>
+      <div class="actions" style="display:flex; gap:8px; align-items:center;">
+        <button class="btn" onclick="printAdmissionPacket()">🖨 列印入會申請表</button>
+      </div>
+    </div>
+    <div class="card card-pad">
+      <div style="font-size:13.5px; color:var(--ink-soft); line-height:1.7;">
+        這是完整的新會員入會申請文件包，共五頁，內容包含：<br>
+        1️⃣ 會員基本資料、白卡及醫療保險、家庭醫生資料<br>
+        2️⃣ 緊急聯絡人、交通接送、希望參加天數、飲食特別需要、介紹來源、入會同意書<br>
+        3️⃣ 會員/代表簽字、經辦人員確認<br>
+        4️⃣ 新會員入會及評估流程追蹤表（22項工作項目逐項簽字）<br>
+        5️⃣ 最終審核及更正記錄、HIPAA 聲明<br><br>
+        按上方「🖨 列印入會申請表」即可產生空白表格列印，供新會員/家屬填寫及各經辦人員逐項簽字使用。
+      </div>
+    </div>
+  `;
+}
+
+function printAdmissionPacket(){
+ try{
+  const blank = (n) => '＿'.repeat(n||14);
+  const tblStyle = 'width:100%; border-collapse:collapse; font-size:14px; margin:0 0 14px;';
+  const thStyle = 'border:1px solid #000; padding:7px 9px; text-align:left; font-weight:700; width:32%; vertical-align:middle;';
+  const tdStyle = 'border:1px solid #000; padding:7px 9px; text-align:left; vertical-align:middle;';
+  const sectionStyle = 'font-weight:700; font-size:14.5px; margin:14px 0 6px; color:#000;';
+  const pageBreakStyle = 'page-break-before:always; padding-top:6px;';
+  const row = (label, value, opts) => {
+    opts = opts || {};
+    return `<tr><th style="${thStyle}">${label.replace(/\n/g,'<br>')}</th><td style="${tdStyle} height:${opts.tall?'42px':'26px'};">${value||''}</td></tr>`;
+  };
+  const table = (rows) => `<table style="${tblStyle}"><tbody>${rows.join('')}</tbody></table>`;
+  const section = (num, cn, en) => `<div style="${sectionStyle}">${num?num+'、':''}${cn}　<span style="font-size:11px;font-weight:700;color:#666;">${en}</span></div>`;
+  const pageTitle = (cn, en) => `
+    <div style="text-align:center; margin-bottom:14px;">
+      <div class="print-title" style="font-size:22px; margin-bottom:2px;">${cn}</div>
+      <div style="font-size:12.5px; font-weight:700; letter-spacing:.03em; color:#333;">${en}</div>
+    </div>`;
+  const footerNote = `<div style="text-align:center; font-size:9.5px; color:#888; margin-top:16px; border-top:1px solid #ccc; padding-top:5px;">Gentle Heart Adult Daycare | New Participant Admission Packet</div>`;
+
+  const checklistTable = (headers, rows, colWidths) => `
+    <table style="width:100%; border-collapse:collapse; font-size:11.5px; margin:0 0 10px; table-layout:fixed;">
+      <colgroup>${colWidths.map(w=>`<col style="width:${w}%;">`).join('')}</colgroup>
+      <thead><tr>${headers.map(h=>`<th style="border:1px solid #000; padding:5px 6px; background:#F3EFE6; font-weight:700; text-align:left;">${h}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(r=>`<tr>${r.map(v=>`<td style="border:1px solid #000; padding:6px 6px; height:30px; vertical-align:middle;">${(v||'').replace(/\n/g,'<br>')}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table>`;
+
+  const TASKS = [
+    ['1','訪客登記 / 初步咨詢完成\nVisitor Log / Initial Inquiry','Front Desk'],
+    ['2','Intake Form 完成\nIntake Form Completed','Social Worker'],
+    ['3','ADL/IADL 評估完成\nADL/IADL Completed','Social Worker'],
+    ['4','TurboTAR 新會員賬號建立\nTurboTAR Account Created','Program Director'],
+    ['5','TurboTAR 所需資料錄入\nRequired TurboTAR Data Entry','PD / MDT'],
+    ['6','新會員紙質檔案建立及標籤完成\nParticipant Chart Created & Labeled','SW Aide'],
+    ['7','H&P 已向 PCP 發出\nH&P Request Sent to PCP','RN'],
+    ['8','完整 H&P 已收到\nCompleted H&P Received','RN'],
+    ['9','Face-to-Face / 所需文件提交 MCP\nF2F Request/Documents Submitted','Program Director'],
+    ['10','提交/傳真確認頁已歸檔\nSubmission Confirmation Filed','Program Director'],
+    ['11','Initial Assessment Approval 收到\nInitial Assessment Approval Received','Front Desk'],
+    ['12','三天 Initial Assessment 已安排\n3 Assessment Days Scheduled','Program Director'],
+    ['13','Nursing Initial Assessment 完成\nNursing Assessment Completed','RN'],
+    ['14','Social Work Initial Assessment 完成\nSocial Work Assessment Completed','Social Worker'],
+    ['15','其他 MDT 評估完成\nOther MDT Assessments Completed','MDT Staff'],
+    ['16','MDT Meeting 完成\nMDT Meeting Completed','Program Director'],
+    ['17','IPC 審核/完成\nIPC Reviewed / Completed','PD / MDT'],
+    ['18','Initial TAR 製作並提交\nInitial TAR Prepared & Submitted','Program Director'],
+    ['19','TAR 提交確認已歸檔\nTAR Confirmation Filed','Program Director'],
+    ['20','TAR Approval 收到\nTAR Approval Received','Front Desk / PD'],
+    ['21','保險網站/Portal 授權狀態已核實\nAuthorization Verified in Portal','Program Director'],
+    ['22','正式入會前檔案最終檢查完成\nFinal Admission File Review','Program Director'],
+  ];
+
+  const html = `
+    <div>
+      ${pageTitle('新會員登記及入會申請表','NEW PARTICIPANT REGISTRATION & ENROLLMENT FORM')}
+      <div style="text-align:center; font-size:13px; font-weight:700; color:#8C4B32; margin-bottom:16px;">歡迎加入 Gentle Heart Adult Daycare 吉泰老年中心</div>
+
+      ${section('一','會員基本資料','PARTICIPANT INFORMATION')}
+      ${table([
+        row('會員編號 ID',''),
+        row('中文姓名',''),
+        row('英文姓名',''),
+        row('出生日期 / 性別','＿＿＿＿年＿＿月＿＿日　性別：☐ 男　☐ 女'),
+        row('主要語言','☐ 普通話　☐ 廣東話　☐ 上海話　☐ 英語　☐ 其他：＿＿＿＿＿＿'),
+        row('家庭地址','',{tall:true}),
+        row('聯絡電話',''),
+      ])}
+
+      ${section('二','白卡及醫療保險','MEDI-CAL & HEALTH PLAN')}
+      <div style="font-weight:700; font-size:13.5px; margin:6px 0;">是否有白卡（Medi-Cal）？　☐ 有 YES　☐ 沒有 NO　☐ 不確定 NOT SURE</div>
+      ${table([
+        row('Medi-Cal / 白卡號碼',''),
+        row('醫療保險計畫','☐ LA Care　☐ Health Net　☐ Molina　☐ IEHP　☐ Blue Cross/Anthem　☐ 其他：＿＿＿＿＿＿'),
+        row('保險會員號碼 Member ID',''),
+        row('Medical Group 醫療集團',''),
+      ])}
+
+      ${section('三','家庭醫生資料','PRIMARY CARE PHYSICIAN (PCP)')}
+      ${table([
+        row('家庭醫生姓名',''),
+        row('診所名稱',''),
+        row('醫生電話 / 傳真','電話：＿＿＿＿＿＿＿＿＿＿　傳真：＿＿＿＿＿＿＿＿＿＿'),
+        row('資料狀態','☐ 已有醫生資料　☐ 需要工作人員協助查詢'),
+      ])}
+      ${footerNote}
+    </div>
+
+    <div style="${pageBreakStyle}">
+      ${section('四','緊急聯絡人','EMERGENCY CONTACT')}
+      ${table([
+        row('姓名','＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿　與會員關係：＿＿＿＿＿＿＿＿'),
+        row('電話','＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿　☐ 子女　☐ 配偶　☐ 親屬　☐ 朋友　☐ 其他'),
+      ])}
+
+      ${pageTitle('新會員服務需求及入會同意','SERVICE NEEDS & CONSENT TO BEGIN ENROLLMENT')}
+
+      ${section('五','交通接送','TRANSPORTATION')}
+      ${table([
+        row('是否需要中心接送','☐ 需要 YES　☐ 不需要 NO　☐ 以後決定'),
+        row('接送地址','☐ 與家庭地址相同　☐ 不同：＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿'),
+      ])}
+
+      ${section('六','希望參加中心的天數','REQUESTED ATTENDANCE')}
+      ${table([
+        row('每週天數','☐ 3 天　☐ 4 天　☐ 5 天　☐ 尚未確定'),
+        row('希望參加','☐ 週一　☐ 週二　☐ 週三　☐ 週四　☐ 週五'),
+      ])}
+
+      ${section('七','飲食特別需要','SPECIAL DIETARY NEEDS')}
+      ${table([
+        row('飲食','☐ 普通餐　☐ 糖尿病餐　☐ 低鹽　☐ 素食　☐ 不吃豬肉　☐ 清真　☐ 其他：＿＿＿＿＿＿'),
+        row('食物過敏','☐ 無　☐ 有，請注明：＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿'),
+      ])}
+
+      ${section('八','介紹來源','REFERRAL SOURCE')}
+      ${table([
+        row('如何知道本中心','☐ 朋友/家人　☐ 會員介紹　☐ 醫生/診所　☐ 保險公司　☐ 微信/網絡　☐ 廣告　☐ 其他'),
+        row('介紹人姓名',''),
+      ])}
+
+      ${section('九','本人同意申請加入中心','CONSENT TO BEGIN ENROLLMENT PROCESS')}
+      <p style="font-size:13px; line-height:1.6; margin:0 0 8px;">本人自願申請加入 Gentle Heart Adult Daycare 吉泰老年中心，並同意中心為辦理入會資格而開始進行必要的資料收集、ADL/IADL 及相關專業評估，並在取得所需授權的情況下，與本人的醫生、醫療集團及醫療保險計劃聯繫及提交所需資料。本人了解，簽署本表代表同意開始入會及評估程序，並不代表醫療保險已經批准或保證最終入會。</p>
+      <p style="font-size:10.5px; line-height:1.5; color:#555; font-style:italic; margin:0;">I voluntarily request enrollment and consent to the necessary enrollment and assessment process. I understand that signing this form does not guarantee health plan authorization or final admission.</p>
+      ${footerNote}
+    </div>
+
+    <div style="${pageBreakStyle}">
+      ${table([
+        row('簽字人','☐ 會員本人　☐ 家屬 / 授權代表'),
+        row('會員姓名',''),
+        row('會員/代表簽字',''),
+        row('日期 / 時間','＿＿＿＿年＿＿月＿＿日　＿＿＿＿＿＿＿＿'),
+        row('如代表簽字：\n姓名/關係/電話','姓名：＿＿＿＿＿＿＿＿　關係：＿＿＿＿＿＿　電話：＿＿＿＿＿＿＿＿＿＿'),
+      ])}
+
+      ${section('十','經辦人員確認','STAFF USE')}
+      ${table([
+        row('首次接待人員','☐ 前台　☐ 社工　☐ 社工助理　☐ Program Director　☐ 其他'),
+        row('經辦人姓名 / 簽字','姓名：＿＿＿＿＿＿＿＿＿＿　簽字：＿＿＿＿＿＿＿＿＿＿'),
+        row('日期 / 時間','＿＿＿＿年＿＿月＿＿日　＿＿＿＿＿＿＿＿'),
+        row('已檢查','☐ 基本資料完整　☐ 白卡已確認　☐ 保險已確認　☐ PCP資料　☐ 緊急聯絡人　☐ 客人已簽字'),
+        row('轉交社工','姓名：＿＿＿＿＿＿＿＿＿＿　日期：＿＿＿＿＿＿　時間：＿＿＿＿＿＿　接收簽字：＿＿＿＿＿＿＿＿＿＿'),
+      ])}
+      ${footerNote}
+    </div>
+
+    <div style="${pageBreakStyle}">
+      ${pageTitle('新會員入會及評估流程追蹤表','NEW PARTICIPANT ADMISSION & ASSESSMENT TRACKING CHECKLIST')}
+      ${table([
+        row('會員姓名',''),
+        row('出生日期 / Health Plan','DOB：＿＿＿＿＿＿＿＿　Health Plan：＿＿＿＿＿＿＿＿＿＿'),
+        row('開始辦理日期 / 正式入會日期','Start：＿＿＿＿＿＿＿＿　Admission：＿＿＿＿＿＿＿＿'),
+      ])}
+      <p style="font-size:11.5px; font-weight:700; margin:6px 0 2px;">規定：每完成一個步驟，由實際經辦人員填寫完成日期、時間並簽字/縮寫。不得代替其他員工簽字。Program Director 負責複核。</p>
+      <p style="font-size:9.5px; font-style:italic; color:#666; margin:0 0 8px;">Each task must be documented by the staff member who actually completed it. Do not sign for another staff member.</p>
+      ${checklistTable(
+        ['#','工作項目 / Task','負責人','完成日期','時間','經辦人簽字','PD 複核'],
+        TASKS.map(([n,task,role])=>[n,task,role,'','','','']),
+        [4,30,14,12,10,15,15]
+      )}
+      ${footerNote}
+    </div>
+
+    <div style="${pageBreakStyle}">
+      ${pageTitle('最終審核及更正記錄','FINAL REVIEW & CORRECTION / FOLLOW-UP RECORD')}
+      ${section('','最終審核','FINAL REVIEW')}
+      ${table([
+        row('所有入會資料已完成','☐ 是 YES　☐ 否 NO'),
+        row('所有專業評估已完成','☐ 是 YES　☐ 否 NO'),
+        row('TAR / Authorization 已批准','☐ 是 YES　☐ 否 NO'),
+        row('可以正式入會','☐ 是 YES　☐ 否 NO'),
+        row('Program Director 最終審核','姓名：＿＿＿＿＿＿＿＿＿＿　簽字：＿＿＿＿＿＿＿＿＿＿'),
+        row('日期 / 時間','＿＿＿＿年＿＿月＿＿日　＿＿＿＿＿＿＿＿'),
+        row('Administrator Review（如需要）','姓名：＿＿＿＿＿＿＿＿＿＿　簽字：＿＿＿＿＿＿＿＿＿＿　日期：＿＿＿＿＿＿'),
+      ])}
+
+      ${section('','錯誤 / 缺件 / 補辦記錄','CORRECTION / FOLLOW-UP RECORD')}
+      ${checklistTable(
+        ['項目#','問題 / 缺件','責任員工','更正日期/時間','員工簽字','PD 複核'],
+        Array.from({length:6}).map(()=>['','','','','','']),
+        [10,26,18,20,15,11]
+      )}
+      <p style="font-size:11px; font-weight:700; color:#444; margin:8px 0 0;">檔案管理建議：本資料包放在每位新會員檔案最前面；第一頁由會員/家屬及接待人員完成，追蹤表隨入會流程逐項簽字，最終由 Program Director 審核。</p>
+
+      <p style="font-size:10px; font-style:italic; color:#777; margin:28px 0 0; border-top:1px solid #ccc; padding-top:8px;">Note: This packet supports internal workflow and accountability. It does not replace any separate HIPAA, medical-record release, health-plan, or service-specific authorization required by law, regulation, or contract.</p>
+      ${footerNote}
+    </div>
+  `;
+  openAndPrintDoc('新會員入會申請表', html, 'portrait');
+ }catch(err){
+  console.error('printAdmissionPacket failed', err);
+  showToast('產生入會申請表時發生錯誤：'+(err && err.message ? err.message : err));
  }
 }
 
