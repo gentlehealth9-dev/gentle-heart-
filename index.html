@@ -991,6 +991,15 @@ function getAdjustEntries(dateStr){
   return (EXCEPTIONS[dateStr]||[]).filter(e=>e.type==='adjust');
 }
 
+// An ERS client normally never comes to the center (delivery/meal-only),
+// but an explicit "extra" entry for that date means staff added them on
+// purpose because they ARE actually coming in person that day — so they
+// should NOT be treated as delivery-only for that date.
+function isErsDeliveryOnlyToday(client, dateStr){
+  if(!client.ers) return false;
+  return !(EXCEPTIONS[dateStr]||[]).some(e=>e.type==='extra' && e.clientId===client.id);
+}
+
 // Kitchen headcount is counted exactly with no buffer, so a leave/extra
 // entered after the kitchen sheet was printed can throw the count off.
 // Surface the most recent leave/extra edit for the date so staff can see
@@ -4192,7 +4201,7 @@ function renderKitchen(root){
     groups[key].push(x.client);
   });
   const groupKeys = Object.keys(groups).sort((a,b)=>groups[b].length-groups[a].length);
-  const ersClients = sched.filter(x=>x.client.ers).map(x=>x.client).sort((a,b)=>idCompare(a.id,b.id));
+  const ersClients = sched.filter(x=>isErsDeliveryOnlyToday(x.client, kitchenDate)).map(x=>x.client).sort((a,b)=>idCompare(a.id,b.id));
   const latestEditIso = getLatestScheduleEditTime(kitchenDate);
 
   root.innerHTML = `
@@ -4249,7 +4258,7 @@ function printKitchen(){
   const formatDietary = t => (t && t.trim()==='回') ? '回民餐' : t;
   const sorted = sortWithCouplesGrouped(sched);
   const dietCount = sched.filter(hasDiet).length;
-  const ersClients = sched.filter(x=>x.client.ers).map(x=>x.client).sort((a,b)=>idCompare(a.id,b.id));
+  const ersClients = sched.filter(x=>isErsDeliveryOnlyToday(x.client, kitchenDate)).map(x=>x.client).sort((a,b)=>idCompare(a.id,b.id));
   const latestEditIso = getLatestScheduleEditTime(kitchenDate);
   const html = `
     ${SIGN_IN_FONT_TAG}
@@ -4268,7 +4277,9 @@ function printKitchen(){
       <tbody>
         ${sorted.map(x=>{
           const d = hasDiet(x) ? formatDietary(x.client.dietary) : '';
-          const ersTag = x.client.ers ? ' <span style="color:#8C4B32; font-weight:700;">（ERS，不到中心僅送餐）</span>' : '';
+          const ersTag = x.client.ers ? (isErsDeliveryOnlyToday(x.client, kitchenDate)
+            ? ' <span style="color:#8C4B32; font-weight:700;">（ERS，不到中心僅送餐）</span>'
+            : ' <span style="color:#33565A; font-weight:700;">（ERS，今天特別到中心）</span>') : '';
           return `<tr>
             <td>${escapeHtml(x.client.id)}</td>
             <td>${escapeHtml(x.client.enName)} ${escapeHtml(x.client.cnName)}${ersTag}</td>
