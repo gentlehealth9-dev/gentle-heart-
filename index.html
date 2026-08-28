@@ -3333,12 +3333,11 @@ function printUberWaiver(){
     <style>.wp-page{page-break-after:always;} .wp-page:last-child{page-break-after:auto;}</style>
     ${pages.map((pageRows, i)=>`
       <div class="wp-page">
-        ${i===0 ? `
         <div style="background:#EDEAE1; color:#2B2620; padding:16px 20px; border-radius:8px; text-align:center; margin-bottom:16px;">
           <div class="print-title" style="color:#2B2620; margin-bottom:4px;">Gentle Heart Daycare Center Transportation Waiver</div>
           <div style="font-size:16px; font-weight:800; letter-spacing:.02em; color:#8C4B32; margin-bottom:6px;">📅 ${fmtDateEnglish(scheduleDate)}</div>
           <div class="print-sub" style="color:#5A5347; margin-bottom:0;">Self-Drive / Uber — ${sched.length} Expected</div>
-        </div>` : ''}
+        </div>
         ${pageTable(pageRows, i===0, i===lastPageIdx)}
       </div>
     `).join('')}`;
