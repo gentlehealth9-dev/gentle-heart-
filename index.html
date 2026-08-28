@@ -4192,6 +4192,7 @@ function renderKitchen(root){
     groups[key].push(x.client);
   });
   const groupKeys = Object.keys(groups).sort((a,b)=>groups[b].length-groups[a].length);
+  const ersClients = sched.filter(x=>x.client.ers).map(x=>x.client).sort((a,b)=>idCompare(a.id,b.id));
   const latestEditIso = getLatestScheduleEditTime(kitchenDate);
 
   root.innerHTML = `
@@ -4219,6 +4220,13 @@ function renderKitchen(root){
       <div class="stat"><div class="num">${groupKeys.length}</div><div class="label">飲食類別數</div></div>
     </div>
 
+    <div class="card card-pad" style="margin-bottom:16px;">
+      <div class="section-label">今日ERS名單（僅送餐，不到中心） — 共 ${ersClients.length} 位</div>
+      ${ersClients.length? `<div class="tag-row">
+        ${ersClients.map(c=>`<span class="badge amber">${escapeHtml(c.id)}　${escapeHtml(c.enName)} ${escapeHtml(c.cnName)}</span>`).join('')}
+      </div>` : '<div style="color:var(--ink-soft);">今日無ERS會員。</div>'}
+    </div>
+
     <div class="card card-pad">
       <div class="section-label">依飲食需求分類</div>
       ${groupKeys.length? groupKeys.map(k=>`
@@ -4241,6 +4249,7 @@ function printKitchen(){
   const formatDietary = t => (t && t.trim()==='回') ? '回民餐' : t;
   const sorted = sortWithCouplesGrouped(sched);
   const dietCount = sched.filter(hasDiet).length;
+  const ersClients = sched.filter(x=>x.client.ers).map(x=>x.client).sort((a,b)=>idCompare(a.id,b.id));
   const latestEditIso = getLatestScheduleEditTime(kitchenDate);
   const html = `
     ${SIGN_IN_FONT_TAG}
@@ -4251,12 +4260,15 @@ function printKitchen(){
     <div class="print-title">廚房備餐需求單</div>
     <div class="print-sub">${fmtDateHuman(kitchenDate)} · 總用餐 ${sched.length} 人，特殊飲食 ${dietCount} 人</div>
     <div style="font-size:12px; color:#8C4B32; font-weight:700; margin:-10px 0 12px;">列印時間：${fmtEditTime(new Date().toISOString())}${latestEditIso ? `　｜　最近一筆請假／加開異動：${fmtEditTime(latestEditIso)}` : ''}　— 若之後又有異動，此單即過期，請重新列印</div>
+    ${ersClients.length ? `<div style="background:#F5E8CE; border:1px solid #E3CD9A; border-radius:6px; padding:8px 12px; margin-bottom:12px; font-size:12px; color:#6B4E14;">
+      <b>今日ERS名單（僅送餐，不到中心） — 共 ${ersClients.length} 位：</b>　${ersClients.map(c=>`${escapeHtml(c.id)} ${escapeHtml(c.enName)} ${escapeHtml(c.cnName)}`).join('　／　')}
+    </div>` : ''}
     <table class="sig-table kitchen-table">
       <thead><tr><th style="width:50px;">編號</th><th>姓名</th><th>飲食需求</th><th style="width:56px;">確認</th></tr></thead>
       <tbody>
         ${sorted.map(x=>{
           const d = hasDiet(x) ? formatDietary(x.client.dietary) : '';
-          const ersTag = (x.client.ers && !x.isExtra) ? ' <span style="color:#8C4B32; font-weight:700;">（ERS，不到中心僅送餐）</span>' : '';
+          const ersTag = x.client.ers ? ' <span style="color:#8C4B32; font-weight:700;">（ERS，不到中心僅送餐）</span>' : '';
           return `<tr>
             <td>${escapeHtml(x.client.id)}</td>
             <td>${escapeHtml(x.client.enName)} ${escapeHtml(x.client.cnName)}${ersTag}</td>
