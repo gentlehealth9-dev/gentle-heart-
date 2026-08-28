@@ -3357,44 +3357,54 @@ function printUberWaiver(){
   // So instead of one long table, split into explicit per-page tables —
   // each with its own copy of the waiver text and column headers — and
   // force a page break between them, the same way the driver route sheets do.
-  const ROWS_PER_PAGE = 18;
-  const rows = sched.length ? sched.map(x=>({id:x.client.id, en:x.client.enName, cn:x.client.cnName, uber:x.client.subMode==='Uber'?'Uber':''})) : [];
+  //
+  // Real rows and the trailing spare blank rows are chunked together as one
+  // list (not real-rows-then-spare-rows-tacked-on-at-the-end), so every page
+  // — including the last one — respects the same per-page row cap and never
+  // silently overflows onto an extra, mostly-blank physical page.
+  const ROWS_PER_PAGE = 15; // tuned for the current 20px bold row height with headroom to spare
   const SPARE_ROWS = 8;
+  const realRows = sched.map(x=>({id:x.client.id, en:x.client.enName, cn:x.client.cnName, uber:x.client.subMode==='Uber'?'Uber':''}));
+  const noticeRows = realRows.length ? [] : [{notice:true}];
+  const allRows = [...noticeRows, ...realRows, ...Array.from({length:SPARE_ROWS}).map(()=>({blank:true}))];
   const pages = [];
-  for(let i=0; i<rows.length; i+=ROWS_PER_PAGE) pages.push(rows.slice(i, i+ROWS_PER_PAGE));
+  for(let i=0; i<allRows.length; i+=ROWS_PER_PAGE) pages.push(allRows.slice(i, i+ROWS_PER_PAGE));
   if(!pages.length) pages.push([]);
-  // Spare blank rows only go at the very end, after the last real row.
-  const lastPageIdx = pages.length - 1;
 
-  const pageTable = (pageRows, isFirst, isLast) => `
+  const rowHtml = r => {
+    if(r.notice) return `<tr><td colspan="7" style="text-align:center;color:#777;">No self-drive/Uber participants today</td></tr>`;
+    if(r.blank) return `<tr style="height:28px;"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`;
+    return `<tr>
+      <td>${escapeHtml(r.id)}</td>
+      <td>${escapeHtml(r.en)}</td>
+      <td>${escapeHtml(r.cn)}</td>
+      <td>${escapeHtml(r.uber)}</td>
+      <td></td><td></td><td></td>
+    </tr>`;
+  };
+
+  const pageTable = (pageRows) => `
     <table class="sig-table wp-table">
       <thead>
         <tr><td colspan="7" style="border:none; padding:0 0 12px; font-size:13px; color:#333; line-height:1.5; font-weight:400; text-align:left;">${WAIVER_TEXT}</td></tr>
         <tr><th style="width:36px;">ID</th><th>English Name</th><th>Chinese Name</th><th style="width:60px;">Uber</th><th>Time In</th><th>Time Out</th><th style="width:22%;">Signature</th></tr>
       </thead>
       <tbody>
-        ${pageRows.length ? pageRows.map(r=>`<tr>
-          <td>${escapeHtml(r.id)}</td>
-          <td>${escapeHtml(r.en)}</td>
-          <td>${escapeHtml(r.cn)}</td>
-          <td>${escapeHtml(r.uber)}</td>
-          <td></td><td></td><td></td>
-        </tr>`).join('') : (isFirst ? `<tr><td colspan="7" style="text-align:center;color:#777;">No self-drive/Uber participants today</td></tr>` : '')}
-        ${isLast ? Array.from({length:SPARE_ROWS}).map(()=>`<tr style="height:28px;"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`).join('') : ''}
+        ${pageRows.map(rowHtml).join('')}
       </tbody>
     </table>`;
 
   const html = `
     ${SIGN_IN_FONT_TAG}
     <style>.wp-page{page-break-after:always;} .wp-page:last-child{page-break-after:auto;}</style>
-    ${pages.map((pageRows, i)=>`
+    ${pages.map((pageRows)=>`
       <div class="wp-page">
         <div style="background:#EDEAE1; color:#2B2620; padding:16px 20px; border-radius:8px; text-align:center; margin-bottom:16px;">
           <div class="print-title" style="color:#2B2620; margin-bottom:4px;">Gentle Heart Daycare Center Transportation Waiver</div>
           <div style="font-size:16px; font-weight:800; letter-spacing:.02em; color:#8C4B32; margin-bottom:6px;">📅 ${fmtDateEnglish(scheduleDate)}</div>
           <div class="print-sub" style="color:#5A5347; margin-bottom:0;">Self-Drive / Uber — ${sched.length} Expected</div>
         </div>
-        ${pageTable(pageRows, i===0, i===lastPageIdx)}
+        ${pageTable(pageRows)}
       </div>
     `).join('')}`;
   openAndPrintDoc(`自駕Uber免責簽到表_${scheduleDate}`, html, 'portrait');
