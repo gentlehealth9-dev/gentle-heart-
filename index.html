@@ -3086,15 +3086,65 @@ function checkAttendanceForDate(dateStr){
 // Aptos Display doesn't cover.
 const SIGN_IN_FONT_TAG = `<style>.print-page-inner{font-family:'Aptos Display','Noto Sans TC','Helvetica Neue',Arial,sans-serif;}</style>`;
 
+const A4_PORTRAIT_USABLE_WIDTH_PX = (210-20)*96/25.4;   // A4, 10mm margins each side
+const A4_PORTRAIT_USABLE_HEIGHT_PX = (297-20)*96/25.4;
+
+// Hardcoding a rows-per-page constant from an isolated measurement doesn't
+// hold up: the actual print rendering always goes through the in-page
+// preview pane (window.open() is blocked in this sandboxed environment),
+// which inherits the live app's own fonts/line-height, and those can still
+// vary in ways a one-off measurement misses. So instead we measure the
+// REAL rendered title box + thead + one data row, live, in the browser
+// that's about to print, right before paginating — self-correcting
+// regardless of exactly what's actually rendering. This is safe to do here
+// (unlike an earlier attempt at dynamic pagination that broke printing
+// entirely): it runs as a normal function call before the preview pane is
+// shown, not as a <script> tag embedded in the innerHTML string handed to
+// openPrintableDoc/openAndPrintDoc — scripts inserted that way never
+// execute, and there's no auto-triggered window.print() here to race
+// against since this path always waits for the person to press Ctrl/⌘+P.
+function measureRowMetrics({titleBoxHtml, theadHtml, rowHtml, tableClass, extraStyle, usableWidth, orientation}){
+  const container = document.createElement('div');
+  container.style.cssText = `position:fixed; left:-9999px; top:0; width:${usableWidth}px; visibility:hidden; font-family:'Aptos Display','Noto Sans TC','Helvetica Neue',Arial,sans-serif; line-height:normal;`;
+  container.innerHTML = `${extraStyle||''}${titleBoxHtml||''}<table class="${tableClass}"><colgroup></colgroup>${theadHtml}<tbody>${rowHtml}${rowHtml}</tbody></table>`;
+  document.body.appendChild(container);
+  let overhead, rowHeight;
+  try{
+    const containerTop = container.getBoundingClientRect().top;
+    const rows = container.querySelectorAll('tbody tr');
+    if(rows.length >= 2){
+      const row0Top = rows[0].getBoundingClientRect().top;
+      const row1Top = rows[1].getBoundingClientRect().top;
+      overhead = row0Top - containerTop;
+      rowHeight = row1Top - row0Top;
+    }
+  }catch(e){ /* fall through to defaults below */ }
+  document.body.removeChild(container);
+  if(!(overhead > 0) || !(rowHeight > 0)){ overhead = 150; rowHeight = 40; } // safe fallback if measurement ever fails
+  return {overhead, rowHeight};
+}
+
+// Computes rowsPerPage for buildFillPagedSheet from a live measurement —
+// safetyMarginPx trims a bit off the usable height so a rounding-level
+// mismatch between this measurement and the browser's own print
+// pagination can't push the last row onto a wasted extra page.
+function computeRowsPerPage({titleBoxHtml, theadHtml, rowHtml, tableClass, extraStyle}, safetyMarginPx){
+  const {overhead, rowHeight} = measureRowMetrics({
+    titleBoxHtml, theadHtml, rowHtml, tableClass, extraStyle,
+    usableWidth: A4_PORTRAIT_USABLE_WIDTH_PX,
+  });
+  const usable = A4_PORTRAIT_USABLE_HEIGHT_PX - (safetyMarginPx==null?20:safetyMarginPx);
+  return Math.max(5, Math.floor((usable - overhead) / rowHeight));
+}
+
 // Shared pattern for sign-in/roster print sheets: split rows into explicit
 // per-page tables (own title box + full <thead> repeated on every page,
 // since browsers don't reliably repeat a table's own <thead> across natural
 // pagination), with enough trailing blank rows added so the LAST page's
 // table always extends exactly to the bottom of the printable page — no
 // print/PDF output should ever show an unbordered blank area, every leftover
-// space is more blank table rows. rowsPerPage must be measured (not
-// guessed) for the specific title box + thead overhead and row height of
-// the sheet calling this — see each caller's own measurement notes.
+// space is more blank table rows. rowsPerPage is computed live via
+// computeRowsPerPage() by each caller, not guessed — see each caller.
 function buildFillPagedSheet({titleBoxHtml, theadHtml, colCount, rowsPerPage, realRows, rowHtml, noticeHtml, extraTableClass, blankRowHeight}){
   const blankRowHtml = `<tr style="height:${blankRowHeight||28}px;">${Array.from({length:colCount}).map(()=>'<td>&nbsp;</td>').join('')}</tr>`;
   const noticeRows = realRows.length ? [] : [{notice:true}];
@@ -3119,6 +3169,38 @@ function buildFillPagedSheet({titleBoxHtml, theadHtml, colCount, rowsPerPage, re
     `).join('')}`;
 }
 
+// Same live-measurement idea as computeRowsPerPage, adapted for
+// buildFillPagedGroupedSheet's three quantities: the doc title block
+// (page 1 only), one group's own header+thead bar, and one data row.
+// headerHtmlSample must be a real group.headerHtml(false) call (it ends
+// mid-markup, at an open <tbody>, same as what buildFillPagedGroupedSheet
+// itself renders) and rowHtmlSample one real data row's <tr>.
+function computeGroupedMetrics({docTitleHtml, headerHtmlSample, rowHtmlSample}){
+  const container = document.createElement('div');
+  container.style.cssText = `position:fixed; left:-9999px; top:0; width:${A4_PORTRAIT_USABLE_WIDTH_PX}px; visibility:hidden; font-family:'Aptos Display','Noto Sans TC','Helvetica Neue',Arial,sans-serif; line-height:normal;`;
+  container.innerHTML = `${docTitleHtml||''}<div id="__gStart">${headerHtmlSample}${rowHtmlSample}${rowHtmlSample}</tbody></table></div>`;
+  document.body.appendChild(container);
+  let titleHeight, headerHeight, rowHeight;
+  try{
+    const containerTop = container.getBoundingClientRect().top;
+    const startDiv = container.querySelector('#__gStart');
+    const startTop = startDiv.getBoundingClientRect().top;
+    const rows = startDiv.querySelectorAll('tbody tr');
+    if(rows.length >= 2){
+      const row0Top = rows[0].getBoundingClientRect().top;
+      const row1Top = rows[1].getBoundingClientRect().top;
+      titleHeight = startTop - containerTop;
+      headerHeight = row0Top - startTop;
+      rowHeight = row1Top - row0Top;
+    }
+  }catch(e){ /* fall through to defaults below */ }
+  document.body.removeChild(container);
+  if(!(titleHeight >= 0)) titleHeight = 60;
+  if(!(headerHeight > 0)) headerHeight = 73.5;
+  if(!(rowHeight > 0)) rowHeight = 34;
+  return {titleHeight, headerHeight, rowHeight};
+}
+
 // Shared pattern for multi-group print sheets — one small table per
 // weekday, or per diet category, stacked on the page — where a single
 // group's own row count can already span several physical pages on its
@@ -3130,13 +3212,14 @@ function buildFillPagedSheet({titleBoxHtml, theadHtml, colCount, rowsPerPage, re
 function buildFillPagedGroupedSheet({docTitleHtml, titleHeight, groups, colCount, headerHeight, rowHeight, usableHeight}){
   // 1046.9px is the exact usable-page height (A4 portrait, 10mm margins),
   // but packing pages to that exact figure produced occasional stray
-  // near-empty extra pages when actually printed to PDF — Chromium's print
-  // pagination doesn't always agree with getBoundingClientRect's on-screen
-  // measurement down to the pixel, and page-break-inside:avoid then bumps
-  // a boundary-straddling row to a whole new page. A ~40px safety margin
-  // (measured empirically against real print output, not just on-screen
-  // layout) eliminates that mismatch.
-  usableHeight = usableHeight || (1046.9 - 40);
+  // near-empty extra pages when actually printed to PDF — some rows here
+  // carry a free-text "備註" note column that can wrap to 2-3 lines,
+  // taller than the single measured baseline row, so a page can end up
+  // with more real content than the header/row-count math assumed. A
+  // generous ~150px safety margin (measured empirically against real
+  // print output with real note text, not just on-screen layout with a
+  // short sample row) keeps that from tipping a page over.
+  usableHeight = usableHeight || (1046.9 - 150);
   const pages = [[]];
   let remaining = usableHeight - (titleHeight||0);
   groups.forEach(g=>{
@@ -3182,19 +3265,20 @@ function printWeeklyOneDay(dateStr){
       <div class="print-sub">${fmtDateHuman(dateStr)}　共 ${sorted.length} 位</div>
     </div>`;
   const theadHtml = `<thead><tr><th style="width:50px;">編號</th><th>英文姓名</th><th>中文姓名</th><th style="width:70px;">狀態</th><th style="width:140px;">備註</th></tr></thead>`;
-  // Measured (not guessed) against this title box + thead overhead and one
-  // data row, at the current 16px font, A4 portrait, 10mm margins.
-  const ROWS_PER_PAGE = 27;
-  const body = buildFillPagedSheet({
-    titleBoxHtml, theadHtml, colCount:5, rowsPerPage:ROWS_PER_PAGE,
-    realRows: sorted,
-    rowHtml: ({client,isExtra,note}) => `<tr>
+  const rowHtml = ({client,isExtra,note}) => `<tr>
       <td>${escapeHtml(client.id)}</td>
       <td>${escapeHtml(client.enName)}</td>
       <td>${escapeHtml(client.cnName)}</td>
       <td>${isExtra? '<span style="color:#8C6318;">加開</span>':'固定'}</td>
       <td>${escapeHtml(note||'')}</td>
-    </tr>`,
+    </tr>`;
+  const ROWS_PER_PAGE = computeRowsPerPage({
+    titleBoxHtml, theadHtml, tableClass:'sig-table',
+    rowHtml: rowHtml(sorted[0] || {client:{id:'000', enName:'Sample Name', cnName:'測試姓名'}, isExtra:false, note:''}),
+  }, 100); // extra margin: the 備註 note column is free text and can wrap
+  const body = buildFillPagedSheet({
+    titleBoxHtml, theadHtml, colCount:5, rowsPerPage:ROWS_PER_PAGE,
+    realRows: sorted, rowHtml,
     noticeHtml: `<tr><td colspan="5" style="text-align:center;color:#777;">這天沒有排班</td></tr>`,
   });
   const html = `${SIGN_IN_FONT_TAG}${body}`;
@@ -3227,11 +3311,14 @@ function printWeekly(){
       noticeHtml: `<tr><td colspan="5" style="text-align:center;color:#777;">這天沒有排班</td></tr>`,
     };
   });
-  // Measured (not guessed): weekly title+sub above the first day (60px,
-  // page 1 only); each day-bar + thead overhead before that day's first
-  // row (73.5px); each data row (34px) — at 16px font, A4 portrait, 10mm.
+  const firstGroupWithRows = groups.find(g=>g.rows.length) || groups[0];
+  const {titleHeight, headerHeight, rowHeight} = computeGroupedMetrics({
+    docTitleHtml,
+    headerHtmlSample: firstGroupWithRows.headerHtml(false),
+    rowHtmlSample: firstGroupWithRows.rows[0] || '<tr><td>000</td><td>Sample Name</td><td>測試姓名</td><td>固定</td><td></td></tr>',
+  });
   const body = buildFillPagedGroupedSheet({
-    docTitleHtml, titleHeight:60, groups, colCount:5, headerHeight:73.5, rowHeight:34,
+    docTitleHtml, titleHeight, groups, colCount:5, headerHeight, rowHeight,
   });
   const html = `${SIGN_IN_FONT_TAG}${body}`;
   openAndPrintDoc(`固定班表_${dates[0]}_${dates[4]}`, html, 'portrait');
@@ -3440,18 +3527,19 @@ function printSignIn(){
       <div class="print-sub" style="color:#5A5347; margin-bottom:0;">Company Pickup — ${sched.length} Expected</div>
     </div>`;
   const theadHtml = `<thead><tr><th style="width:36px;">ID</th><th>English Name</th><th>Chinese Name</th><th>Time In</th><th>Time Out</th><th style="width:22%;">Signature</th></tr></thead>`;
-  // Measured (not guessed) against this exact title box + thead overhead
-  // and one data row, at the current 16px font, A4 portrait, 10mm margins.
-  const ROWS_PER_PAGE = 26;
-  const body = buildFillPagedSheet({
-    titleBoxHtml, theadHtml, colCount:6, rowsPerPage:ROWS_PER_PAGE,
-    realRows: sched,
-    rowHtml: x => `<tr>
+  const rowHtml = x => `<tr>
       <td>${escapeHtml(x.client.id)}</td>
       <td>${escapeHtml(x.client.enName)}</td>
       <td>${escapeHtml(x.client.cnName)}</td>
       <td></td><td></td><td></td>
-    </tr>`,
+    </tr>`;
+  const ROWS_PER_PAGE = computeRowsPerPage({
+    titleBoxHtml, theadHtml, tableClass:'sig-table',
+    rowHtml: rowHtml(sched[0] || {client:{id:'000', enName:'Sample Name', cnName:'測試姓名'}}),
+  });
+  const body = buildFillPagedSheet({
+    titleBoxHtml, theadHtml, colCount:6, rowsPerPage:ROWS_PER_PAGE,
+    realRows: sched, rowHtml,
     noticeHtml: `<tr><td colspan="6" style="text-align:center;color:#777;">No company-pickup participants today</td></tr>`,
   });
   const html = `${SIGN_IN_FONT_TAG}${body}`;
@@ -3482,20 +3570,21 @@ function printUberWaiver(){
       <tr><td colspan="7" style="border:none; padding:0 0 12px; font-size:13px; color:#333; line-height:1.5; font-weight:400; text-align:left;">${WAIVER_TEXT}</td></tr>
       <tr><th style="width:36px;">ID</th><th>English Name</th><th>Chinese Name</th><th style="width:60px;">Uber</th><th>Time In</th><th>Time Out</th><th style="width:22%;">Signature</th></tr>
     </thead>`;
-  // Measured (not guessed) against this exact title box + waiver text +
-  // thead overhead and the longest real client name on file, at the
-  // current 16px font, A4 portrait, 10mm margins.
-  const ROWS_PER_PAGE = 24;
-  const body = buildFillPagedSheet({
-    titleBoxHtml, theadHtml, colCount:7, rowsPerPage:ROWS_PER_PAGE,
-    realRows: sched.map(x=>({id:x.client.id, en:x.client.enName, cn:x.client.cnName, uber:x.client.subMode==='Uber'?'Uber':''})),
-    rowHtml: r => `<tr>
+  const realRows = sched.map(x=>({id:x.client.id, en:x.client.enName, cn:x.client.cnName, uber:x.client.subMode==='Uber'?'Uber':''}));
+  const rowHtml = r => `<tr>
       <td>${escapeHtml(r.id)}</td>
       <td>${escapeHtml(r.en)}</td>
       <td>${escapeHtml(r.cn)}</td>
       <td>${escapeHtml(r.uber)}</td>
       <td></td><td></td><td></td>
-    </tr>`,
+    </tr>`;
+  const ROWS_PER_PAGE = computeRowsPerPage({
+    titleBoxHtml, theadHtml, tableClass:'sig-table',
+    rowHtml: rowHtml(realRows[0] || {id:'000', en:'Sample Name', cn:'測試姓名', uber:'Uber'}),
+  });
+  const body = buildFillPagedSheet({
+    titleBoxHtml, theadHtml, colCount:7, rowsPerPage:ROWS_PER_PAGE,
+    realRows, rowHtml,
     noticeHtml: `<tr><td colspan="7" style="text-align:center;color:#777;">No self-drive/Uber participants today</td></tr>`,
   });
   const html = `${SIGN_IN_FONT_TAG}${body}`;
@@ -4270,34 +4359,64 @@ const DRIVER_ROUTE_TRIP_LABELS = ['第一趟','第二趟','第三趟','第四趟
 
 // Unlike the fixed-field sign-in sheets elsewhere in this file, a route
 // sheet's rows carry free-text addresses of very different lengths, so
-// there's no single "rows per page" constant to measure and hardcode.
-// A CSS-only approach (letting the table stretch spare rows to fill
+// there's no single "rows per page" constant to measure and hardcode —
+// and a CSS-only approach (letting the table stretch spare rows to fill
 // whatever space real rows didn't use) was tried and measured perfectly
-// on screen, but broke under Chromium's print/PDF pagination specifically
-// — it silently pushed a near-empty extra page after the real content,
-// even with a generous safety buffer, because flex+table fragmentation
-// during printing doesn't reflect the same layout getBoundingClientRect
-// reports on screen. So this instead estimates each row's height from a
-// coarse, deliberately-conservative content-length check (long address or
-// combined name text bumps a row to the taller two-line estimate) and
-// computes spareRows from that, the same shape as the other print sheets'
-// static ROWS_PER_PAGE constants — a small unfilled gap at the very
-// bottom is an acceptable outcome; spare rows overflowing onto a wasted
-// extra page is not.
-const ROUTE_USABLE_HEIGHT_PX = 700; // (210-20)*96/25.4 ≈ 718.1px, safety margin trimmed
-const ROUTE_ROW_OVERHEAD_PX = 130; // title + date row + thead, measured
-const ROUTE_ROW_HEIGHT_PX = 61; // measured single-line row height (deliberately generous, for safety)
-const ROUTE_ROW_HEIGHT_TALL_PX = 81; // measured two-line row height
-const ROUTE_BLANK_ROW_HEIGHT_PX = 41; // measured blank/spare row height (shorter — no wrapped text)
-function estimateRouteRowHeight(x){
+// on screen, but broke under Chromium's print/PDF pagination specifically:
+// it silently pushed a near-empty extra page after the real content, even
+// with a generous safety buffer, because flex+table fragmentation during
+// printing doesn't reflect the same layout getBoundingClientRect reports
+// on screen. So instead this measures the real overhead/row heights live
+// (same approach as computeRowsPerPage above) and estimates each row's
+// height from a coarse, deliberately-conservative content-length check
+// (long address or combined name text bumps a row to the taller two-line
+// estimate, scaled off the live-measured baseline) — a small unfilled gap
+// at the very bottom is an acceptable outcome; spare rows overflowing
+// onto a wasted extra page is not.
+const A4_LANDSCAPE_USABLE_WIDTH_PX = (297-20)*96/25.4;
+const A4_LANDSCAPE_USABLE_HEIGHT_PX = (210-20)*96/25.4;
+function measureRouteMetrics(){
+  const container = document.createElement('div');
+  container.style.cssText = `position:fixed; left:-9999px; top:0; width:${A4_LANDSCAPE_USABLE_WIDTH_PX}px; visibility:hidden;`;
+  container.innerHTML = `<style>${ROUTE_PAGE_STYLE}</style>` + buildDriverPageHtml('Sample Driver', [
+    {client:{id:'000', enName:'Sample Name', cnName:'測試姓名', address:'123 Test Street Somewhere, City, CA 90000', phone:'000-000-0000'}},
+  ], 0, 1, {spareRows:2, includeTracking:true});
+  document.body.appendChild(container);
+  let overhead, rowHeight, blankRowHeight;
+  try{
+    const containerTop = container.getBoundingClientRect().top;
+    const rows = container.querySelectorAll('tbody tr');
+    if(rows.length >= 3){
+      const r0 = rows[0].getBoundingClientRect().top;
+      const r1 = rows[1].getBoundingClientRect().top;
+      const r2 = rows[2].getBoundingClientRect().top;
+      overhead = r0 - containerTop;
+      rowHeight = r1 - r0;
+      blankRowHeight = r2 - r1;
+    }
+  }catch(e){ /* fall through to defaults below */ }
+  document.body.removeChild(container);
+  if(!(overhead > 0)) overhead = 130;
+  if(!(rowHeight > 0)) rowHeight = 61;
+  if(!(blankRowHeight > 0)) blankRowHeight = 41;
+  return {overhead, rowHeight, blankRowHeight};
+}
+function estimateRouteRowHeight(x, baseRowHeight){
   const cnText = x.client.cnName + (x.returnOnly ? ' (回程)' : '');
-  const isTall = (x.client.address||'').length > 40 || (x.client.enName||'').length > 20 || cnText.length > 8;
-  return isTall ? ROUTE_ROW_HEIGHT_TALL_PX : ROUTE_ROW_HEIGHT_PX;
+  const isTall = (x.client.address||'').length > 25 || (x.client.enName||'').length > 16 || cnText.length > 6;
+  return isTall ? Math.round(baseRowHeight * 1.33) : baseRowHeight;
 }
 function estimateRouteSpareRows(chunk){
-  const usedHeight = chunk.reduce((sum,x)=>sum+estimateRouteRowHeight(x), 0);
-  const remaining = ROUTE_USABLE_HEIGHT_PX - ROUTE_ROW_OVERHEAD_PX - usedHeight;
-  return remaining>0 ? Math.floor(remaining/ROUTE_BLANK_ROW_HEIGHT_PX) : 0;
+  const {overhead, rowHeight, blankRowHeight} = measureRouteMetrics();
+  // Real addresses vary in length far more than the length-based "is this
+  // row tall" heuristic above can perfectly predict, so this carries a much
+  // larger safety margin than the fixed-field sign-in sheets — a modest
+  // unfilled gap at the bottom is a fine outcome; spare rows tipping a
+  // driver's page onto a wasted extra page is not.
+  const usableHeight = A4_LANDSCAPE_USABLE_HEIGHT_PX - 150;
+  const usedHeight = chunk.reduce((sum,x)=>sum+estimateRouteRowHeight(x, rowHeight), 0);
+  const remaining = usableHeight - overhead - usedHeight;
+  return remaining>0 ? Math.floor(remaining/blankRowHeight) : 0;
 }
 
 function buildDriverPageHtml(driverName, chunk, tripIndex, tripCount, opts){
@@ -4454,16 +4573,7 @@ function printKitchen(){
       <b>今日ERS名單（僅送餐，不到中心） — 共 ${ersClients.length} 位：</b>　${ersClients.map(c=>`${escapeHtml(c.id)} ${escapeHtml(c.enName)} ${escapeHtml(c.cnName)}`).join('　／　')}
     </div>` : ''}`;
   const theadHtml = `<thead><tr><th style="width:50px;">編號</th><th>姓名</th><th>飲食需求</th><th style="width:56px;">確認</th></tr></thead>`;
-  // Measured (not guessed) against this header (title/sub/print-time banner
-  // + a representative 3-name ERS banner line) and one data row, at 12px
-  // kitchen-table font. The ERS banner's length varies day to day, so this
-  // carries extra safety margin (~60px, roughly one more wrapped line)
-  // beyond the measured overhead rather than being pixel-exact every day.
-  const ROWS_PER_PAGE = 34;
-  const body = buildFillPagedSheet({
-    titleBoxHtml, theadHtml, colCount:4, rowsPerPage:ROWS_PER_PAGE, extraTableClass:'kitchen-table', blankRowHeight:24,
-    realRows: sorted,
-    rowHtml: x => {
+  const rowHtml = x => {
       const d = hasDiet(x) ? formatDietary(x.client.dietary) : '';
       const ersTag = x.client.ers ? (isErsDeliveryOnlyToday(x.client, kitchenDate)
         ? ' <span style="color:#8C4B32; font-weight:700;">（ERS，不到中心僅送餐）</span>'
@@ -4474,7 +4584,17 @@ function printKitchen(){
         <td>${d? `<span style="color:#A1443A; font-weight:700;">${escapeHtml(d)}</span>` : '—'}</td>
         <td style="text-align:center; font-size:14px; color:#999;">☐</td>
       </tr>`;
-    },
+  };
+  // The ERS banner's length varies day to day, so a couple extra px of
+  // safety margin beyond the usual default is added on top of the live
+  // measurement rather than trying to be pixel-exact every single day.
+  const ROWS_PER_PAGE = computeRowsPerPage({
+    titleBoxHtml, theadHtml, tableClass:'sig-table kitchen-table',
+    rowHtml: rowHtml(sorted[0] || {client:{id:'000', enName:'Sample Name', cnName:'測試姓名', dietary:'', ers:false}}),
+  }, 120);
+  const body = buildFillPagedSheet({
+    titleBoxHtml, theadHtml, colCount:4, rowsPerPage:ROWS_PER_PAGE, extraTableClass:'kitchen-table', blankRowHeight:24,
+    realRows: sorted, rowHtml,
     noticeHtml: `<tr><td colspan="4" style="text-align:center;color:#777;">今日無到訪會員</td></tr>`,
   });
   const html = `${SIGN_IN_FONT_TAG}${body}`;
@@ -4524,12 +4644,13 @@ function printSpecialDiet(){
       </tr>`),
       noticeHtml: '',
     }));
-    // Measured (not guessed): title+sub+print-time banner above the first
-    // category (79px, page 1 only); each category-bar + thead overhead
-    // before that category's first row (73.5px); each data row (34px) —
-    // at 16px font, A4 portrait, 10mm margins.
+    const {titleHeight, headerHeight, rowHeight} = computeGroupedMetrics({
+      docTitleHtml,
+      headerHtmlSample: pagedGroups[0].headerHtml(false),
+      rowHtmlSample: pagedGroups[0].rows[0],
+    });
     const body = buildFillPagedGroupedSheet({
-      docTitleHtml, titleHeight:79, groups:pagedGroups, colCount:4, headerHeight:73.5, rowHeight:34,
+      docTitleHtml, titleHeight, groups:pagedGroups, colCount:4, headerHeight, rowHeight,
     });
     html = `${SIGN_IN_FONT_TAG}${body}`;
   } else {
