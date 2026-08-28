@@ -1802,7 +1802,11 @@ function openMemberModal(id, isVisitorMode){
         <button class="x-close" onclick="closeMemberModal()">✕</button>
       </div>
       <div class="modal-body">
-        ${isNew && isVisitorMode ? `<div class="hist-item" style="background:var(--sage-soft); border-color:#C9DFC9; margin-bottom:14px;"><span>訪客資料跟一般會員存在同一個系統裡，之後隨時可以在「會員資料」搜尋到。編號可以先留空由你自訂（例如 V1），排班/司機/保險天數等欄位訪客通常用不到，可以略過不填。</span></div>`:''}
+        ${isNew && isVisitorMode ? `<div class="hist-item" style="background:var(--sage-soft); border-color:#C9DFC9; margin-bottom:14px;"><span>訪客資料跟一般會員存在同一個系統裡，之後隨時可以在「會員資料」搜尋到。編號可以先留空由你自訂（例如 V1），排班/司機/保險天數等欄位訪客通常用不到，可以略過不填。</span></div>
+        <label class="field" style="margin-bottom:14px;">特別來參觀體驗日期（選填）
+          <input type="date" id="f_visit_date">
+          <span style="font-size:11px; color:var(--ink-soft); margin-top:2px;">填了就會自動把這位訪客加到當天的到訪名單，不用再去每日排班那邊手動加開</span>
+        </label>`:''}
         <div class="section-label">基本資料</div>
         <div class="grid grid-2">
           <label class="field">會員編號 ID
@@ -2449,13 +2453,25 @@ async function saveMemberModal(isNew){
   const changes = parseNoteForScheduleChanges(id, obj.note||'').filter(r=>{
     return !(EXCEPTIONS[r.date]||[]).some(e=>e.type===r.type && e.clientId===id);
   });
-  if(changes.length){
+
+  // New visitor's optional "coming to visit on this date" field — add them
+  // straight to that day's schedule so staff don't have to go do it
+  // separately on the daily schedule page.
+  const visitDateInput = document.getElementById('f_visit_date');
+  const visitDate = visitDateInput ? visitDateInput.value : '';
+  let visitDateAdded = false;
+  if(isNew && visitDate && !(EXCEPTIONS[visitDate]||[]).some(e=>e.type==='extra' && e.clientId===id)){
+    addException(visitDate, {clientId:id, type:'extra', note:'新訪客參觀體驗'});
+    visitDateAdded = true;
+  }
+
+  if(changes.length || visitDateAdded){
     changes.forEach(r=>{
       addException(r.date, {clientId:id, type:r.type, note:'依備註自動偵測：'+obj.note});
     });
     await saveExceptions();
     const leaveCount = changes.filter(r=>r.type==='leave').length;
-    const extraCount = changes.filter(r=>r.type==='extra').length;
+    const extraCount = changes.filter(r=>r.type==='extra').length + (visitDateAdded?1:0);
     const parts = [];
     if(leaveCount) parts.push(`${leaveCount} 筆請假`);
     if(extraCount) parts.push(`${extraCount} 筆加開`);
@@ -2591,11 +2607,11 @@ function renderSchedule(root){
         ` : ''}
 
         <div class="section-label" style="margin-top:22px;">新增今日到訪者（原本非排班日）</div>
+        <datalist id="dailyClientDatalist">
+          ${CLIENTS.filter(c=>c.status==='active').sort((a,b)=>idCompare(a.id,b.id)).map(c=>`<option value="${escapeHtml(c.id)}">${escapeHtml(c.enName)}／${escapeHtml(c.cnName)}</option>`).join('')}
+        </datalist>
         <div style="display:flex; gap:8px;">
-          <select id="extraSelect" style="flex:1;">
-            <option value="">選擇會員…</option>
-            ${CLIENTS.filter(c=>c.status==='active').sort((a,b)=>a.enName.localeCompare(b.enName)).map(c=>`<option value="${c.id}">${escapeHtml(c.enName)}／${escapeHtml(c.cnName)}（${c.id}）</option>`).join('')}
-          </select>
+          <input type="text" id="extraIdInput" list="dailyClientDatalist" placeholder="輸入編號搜尋新增到訪者…" style="flex:1;" onkeydown="if(event.key==='Enter'){addExtraToday();}">
           <button class="btn sm" onclick="addExtraToday()">＋ 加入</button>
         </div>
       </div>
@@ -2811,14 +2827,18 @@ async function undoLeave(excId){
   render();
 }
 async function addExtraToday(){
-  const sel = document.getElementById('extraSelect');
-  const id = sel.value;
-  if(!id) return;
+  const input = document.getElementById('extraIdInput');
+  const raw = input ? input.value.trim() : '';
+  if(!raw) return;
+  const c = getClient(raw);
+  if(!c){ showToast(`找不到編號 ${raw} 的會員`); return; }
+  const id = c.id;
   const already = getScheduledForDate(scheduleDate).some(x=>x.client.id===id);
   if(already){ showToast('此會員今日已在名單中'); return; }
   addException(scheduleDate, {clientId:id, type:'extra', note:'臨時加開'});
   await saveExceptions();
-  showToast('已加入今日名單');
+  if(input) input.value = '';
+  showToast(`已將 ${clientLabel(c)} 加入今日名單`);
   render();
 }
 
