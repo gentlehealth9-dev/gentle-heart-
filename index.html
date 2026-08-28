@@ -3298,14 +3298,16 @@ function printUberWaiver(){
       <div style="font-size:16px; font-weight:800; letter-spacing:.02em; color:#8C4B32; margin-bottom:6px;">📅 ${fmtDateEnglish(scheduleDate)}</div>
       <div class="print-sub" style="color:#5A5347; margin-bottom:0;">Self-Drive / Uber — ${sched.length} Expected</div>
     </div>
-    <p style="font-size:16px; color:#333; line-height:1.6; margin:0 0 16px;">
-      I, the participant listed, understand that the center has arranged inclusive transportation services, but I consent to
-      waive today's transportation services due to unforeseen personal and/or emergency reasons. By signing below, I fully
-      waive and release GENTLE HEART DAYCARE CENTER, and its employees from all liability, injuries or loss arising out of,
-      connected with, or in any way associated with my choice of transportation.
-    </p>
     <table class="sig-table">
-      <thead><tr><th style="width:50px;">ID</th><th>English Name</th><th>Chinese Name</th><th>Time In</th><th>Time Out</th><th>Signature</th></tr></thead>
+      <thead>
+        <tr><td colspan="6" style="border:none; padding:0 0 12px; font-size:13px; color:#333; line-height:1.5; font-weight:400; text-align:left;">
+          I, the participant listed, understand that the center has arranged inclusive transportation services, but I consent to
+          waive today's transportation services due to unforeseen personal and/or emergency reasons. By signing below, I fully
+          waive and release GENTLE HEART DAYCARE CENTER, and its employees from all liability, injuries or loss arising out of,
+          connected with, or in any way associated with my choice of transportation.
+        </td></tr>
+        <tr><th style="width:50px;">ID</th><th>English Name</th><th>Chinese Name</th><th>Time In</th><th>Time Out</th><th>Signature</th></tr>
+      </thead>
       <tbody>
         ${sched.length ? sched.map(x=>`<tr>
           <td>${escapeHtml(x.client.id)}</td>
