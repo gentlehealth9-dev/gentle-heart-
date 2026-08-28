@@ -990,6 +990,22 @@ function getAdjustEntries(dateStr){
   return (EXCEPTIONS[dateStr]||[]).filter(e=>e.type==='adjust');
 }
 
+// Kitchen headcount is counted exactly with no buffer, so a leave/extra
+// entered after the kitchen sheet was printed can throw the count off.
+// Surface the most recent leave/extra edit for the date so staff can see
+// at a glance whether the sheet in hand might already be out of date.
+function getLatestScheduleEditTime(dateStr){
+  const entries = (EXCEPTIONS[dateStr]||[]).filter(e=>e.type==='leave'||e.type==='extra');
+  if(!entries.length) return null;
+  return entries.reduce((latest,e)=> (!latest || e.createdAt>latest) ? e.createdAt : latest, null);
+}
+function fmtEditTime(iso){
+  if(!iso) return '';
+  try{
+    return new Date(iso).toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});
+  }catch(e){ return ''; }
+}
+
 function getLeaveEntries(dateStr){
   return (EXCEPTIONS[dateStr]||[]).filter(e=>e.type==='leave');
 }
@@ -3354,7 +3370,7 @@ function printVisitorToMemberForm(clientId){
  try{
   const c = clientId ? getClient(clientId) : null;
   const blank = (n) => '＿'.repeat(n||14);
-  const tblStyle = 'width:100%; border-collapse:collapse; font-size:15px; margin:0 0 18px;';
+  const tblStyle = 'width:100%; border-collapse:collapse; font-size:16px; margin:0 0 18px;';
   const thStyle = 'border:1px solid #000; padding:8px 10px; text-align:left; font-weight:700; width:34%; vertical-align:middle;';
   const tdStyle = 'border:1px solid #000; padding:8px 10px; text-align:left; vertical-align:middle;';
   const sectionStyle = 'font-weight:700; font-size:14.5px; margin:14px 0 6px; color:#000;';
@@ -4164,6 +4180,7 @@ function renderKitchen(root){
     groups[key].push(x.client);
   });
   const groupKeys = Object.keys(groups).sort((a,b)=>groups[b].length-groups[a].length);
+  const latestEditIso = getLatestScheduleEditTime(kitchenDate);
 
   root.innerHTML = `
     <div class="topbar">
@@ -4177,6 +4194,10 @@ function renderKitchen(root){
         <button class="btn ghost" onclick="printSpecialDiet()">🖨 特殊飲食分類單（依日期）</button>
       </div>
     </div>
+
+    ${latestEditIso ? `<div class="card card-pad" style="background:var(--amber-soft); border-color:var(--amber); margin-bottom:16px;">
+      ⚠️ 這天最近一筆請假／臨時加開異動時間：<b>${fmtEditTime(latestEditIso)}</b>　— 人數是抓剛好的，列印前請確認是這次異動之後印的，不然人數會對不上。
+    </div>` : ''}
 
     ${!wd ? `<div class="card card-pad"><div class="empty-state"><div class="big">🍽️</div>週末無用餐排班。</div></div>` : `
     <div class="grid grid-4" style="margin-bottom:16px;">
@@ -4208,13 +4229,15 @@ function printKitchen(){
   const formatDietary = t => (t && t.trim()==='回') ? '回民餐' : t;
   const sorted = sortWithCouplesGrouped(sched);
   const dietCount = sched.filter(hasDiet).length;
+  const latestEditIso = getLatestScheduleEditTime(kitchenDate);
   const html = `
     <style>
-      table.kitchen-table{font-size:12px;}
-      table.kitchen-table th,table.kitchen-table td{padding:3px 6px;}
+      table.kitchen-table{font-size:16px;}
+      table.kitchen-table th,table.kitchen-table td{padding:4px 7px;}
     </style>
     <div class="print-title">廚房備餐需求單</div>
     <div class="print-sub">${fmtDateHuman(kitchenDate)} · 總用餐 ${sched.length} 人，特殊飲食 ${dietCount} 人</div>
+    <div style="font-size:12px; color:#8C4B32; font-weight:700; margin:-10px 0 12px;">列印時間：${fmtEditTime(new Date().toISOString())}${latestEditIso ? `　｜　最近一筆請假／加開異動：${fmtEditTime(latestEditIso)}` : ''}　— 若之後又有異動，此單即過期，請重新列印</div>
     <table class="sig-table kitchen-table">
       <thead><tr><th style="width:50px;">編號</th><th>姓名</th><th>飲食需求</th><th style="width:56px;">確認</th></tr></thead>
       <tbody>
@@ -4258,9 +4281,11 @@ function printSpecialDiet(){
     clients: eligible.filter(c=>cat.re.test(c.dietary)).sort((a,b)=>idCompare(a.id,b.id)),
   })).filter(g=>g.clients.length);
 
+  const latestEditIso = getLatestScheduleEditTime(kitchenDate);
   const html = `
     <div class="print-title">特殊飲食需求單</div>
     <div class="print-sub">${fmtDateHuman(kitchenDate)} · 今日用餐 ${sched.length} 人，依飲食分類 · 共 ${eligible.length} 位有特殊飲食記錄</div>
+    <div style="font-size:12px; color:#8C4B32; font-weight:700; margin:-10px 0 12px;">列印時間：${fmtEditTime(new Date().toISOString())}${latestEditIso ? `　｜　最近一筆請假／加開異動：${fmtEditTime(latestEditIso)}` : ''}　— 若之後又有異動，此單即過期，請重新列印</div>
     ${groups.length ? groups.map(g=>`
       <div style="margin-top:14px; page-break-inside:avoid;">
         <div style="font-family:'Noto Serif TC',serif; font-weight:700; font-size:16px; background:#F0EBDD; padding:6px 10px; border-radius:6px;">${escapeHtml(g.label)}　共 ${g.clients.length} 位</div>
