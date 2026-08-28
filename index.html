@@ -3292,32 +3292,56 @@ function printUberWaiver(){
   const sched = sortWithCouplesGrouped(
     getScheduledForDate(scheduleDate).filter(x=>x.client.transportMode==='uber_self')
   );
-  const html = `
-    <div style="background:#EDEAE1; color:#2B2620; padding:16px 20px; border-radius:8px; text-align:center; margin-bottom:16px;">
-      <div class="print-title" style="color:#2B2620; margin-bottom:4px;">Gentle Heart Daycare Center Transportation Waiver</div>
-      <div style="font-size:16px; font-weight:800; letter-spacing:.02em; color:#8C4B32; margin-bottom:6px;">📅 ${fmtDateEnglish(scheduleDate)}</div>
-      <div class="print-sub" style="color:#5A5347; margin-bottom:0;">Self-Drive / Uber — ${sched.length} Expected</div>
-    </div>
-    <table class="sig-table">
+  const WAIVER_TEXT = `
+    I, the participant listed, understand that the center has arranged inclusive transportation services, but I consent to
+    waive today's transportation services due to unforeseen personal and/or emergency reasons. By signing below, I fully
+    waive and release GENTLE HEART DAYCARE CENTER, and its employees from all liability, injuries or loss arising out of,
+    connected with, or in any way associated with my choice of transportation.
+  `;
+  // Some print/PDF renderers don't reliably repeat a table's <thead> across
+  // pages, which dropped the waiver text from every page after the first.
+  // So instead of one long table, split into explicit per-page tables —
+  // each with its own copy of the waiver text and column headers — and
+  // force a page break between them, the same way the driver route sheets do.
+  const ROWS_PER_PAGE = 18;
+  const rows = sched.length ? sched.map(x=>({id:x.client.id, en:x.client.enName, cn:x.client.cnName})) : [];
+  const SPARE_ROWS = 8;
+  const pages = [];
+  for(let i=0; i<rows.length; i+=ROWS_PER_PAGE) pages.push(rows.slice(i, i+ROWS_PER_PAGE));
+  if(!pages.length) pages.push([]);
+  // Spare blank rows only go at the very end, after the last real row.
+  const lastPageIdx = pages.length - 1;
+
+  const pageTable = (pageRows, isFirst, isLast) => `
+    <table class="sig-table wp-table">
       <thead>
-        <tr><td colspan="6" style="border:none; padding:0 0 12px; font-size:13px; color:#333; line-height:1.5; font-weight:400; text-align:left;">
-          I, the participant listed, understand that the center has arranged inclusive transportation services, but I consent to
-          waive today's transportation services due to unforeseen personal and/or emergency reasons. By signing below, I fully
-          waive and release GENTLE HEART DAYCARE CENTER, and its employees from all liability, injuries or loss arising out of,
-          connected with, or in any way associated with my choice of transportation.
-        </td></tr>
+        <tr><td colspan="6" style="border:none; padding:0 0 12px; font-size:13px; color:#333; line-height:1.5; font-weight:400; text-align:left;">${WAIVER_TEXT}</td></tr>
         <tr><th style="width:50px;">ID</th><th>English Name</th><th>Chinese Name</th><th>Time In</th><th>Time Out</th><th>Signature</th></tr>
       </thead>
       <tbody>
-        ${sched.length ? sched.map(x=>`<tr>
-          <td>${escapeHtml(x.client.id)}</td>
-          <td>${escapeHtml(x.client.enName)}</td>
-          <td>${escapeHtml(x.client.cnName)}</td>
+        ${pageRows.length ? pageRows.map(r=>`<tr>
+          <td>${escapeHtml(r.id)}</td>
+          <td>${escapeHtml(r.en)}</td>
+          <td>${escapeHtml(r.cn)}</td>
           <td></td><td></td><td></td>
-        </tr>`).join('') : `<tr><td colspan="6" style="text-align:center;color:#777;">No self-drive/Uber participants today</td></tr>`}
-        ${Array.from({length:8}).map(()=>`<tr style="height:28px;"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`).join('')}
+        </tr>`).join('') : (isFirst ? `<tr><td colspan="6" style="text-align:center;color:#777;">No self-drive/Uber participants today</td></tr>` : '')}
+        ${isLast ? Array.from({length:SPARE_ROWS}).map(()=>`<tr style="height:28px;"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`).join('') : ''}
       </tbody>
     </table>`;
+
+  const html = `
+    <style>.wp-page{page-break-after:always;} .wp-page:last-child{page-break-after:auto;}</style>
+    ${pages.map((pageRows, i)=>`
+      <div class="wp-page">
+        ${i===0 ? `
+        <div style="background:#EDEAE1; color:#2B2620; padding:16px 20px; border-radius:8px; text-align:center; margin-bottom:16px;">
+          <div class="print-title" style="color:#2B2620; margin-bottom:4px;">Gentle Heart Daycare Center Transportation Waiver</div>
+          <div style="font-size:16px; font-weight:800; letter-spacing:.02em; color:#8C4B32; margin-bottom:6px;">📅 ${fmtDateEnglish(scheduleDate)}</div>
+          <div class="print-sub" style="color:#5A5347; margin-bottom:0;">Self-Drive / Uber — ${sched.length} Expected</div>
+        </div>` : ''}
+        ${pageTable(pageRows, i===0, i===lastPageIdx)}
+      </div>
+    `).join('')}`;
   openAndPrintDoc(`自駕Uber免責簽到表_${scheduleDate}`, html, 'portrait');
  }catch(err){
   console.error('printUberWaiver failed', err);
