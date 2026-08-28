@@ -2130,13 +2130,21 @@ function renderExcCalendar(key){
   const panel = document.getElementById(cfg.panelId);
   if(!panel || !cfg.viewMonth) return;
   const {year, month} = cfg.viewMonth;
-  const first = new Date(year, month, 1);
-  const startWeekday = first.getDay();
   const daysInMonth = new Date(year, month+1, 0).getDate();
   const selected = cfg.get();
+  // Center is closed weekends, so the picker only shows Mon-Fri (5 columns).
+  // Skip Sat/Sun entirely rather than rendering them disabled — the grid
+  // auto-wraps every 5 weekday cells into a correct row with no gaps.
   let cells = '';
-  for(let i=0;i<startWeekday;i++) cells += '<span></span>';
+  let started = false;
   for(let d=1; d<=daysInMonth; d++){
+    const wd = new Date(year, month, d).getDay();
+    if(wd===0 || wd===6) continue;
+    if(!started){
+      const monIdx = (wd+6)%7; // Mon=0..Fri=4
+      for(let i=0;i<monIdx;i++) cells += '<span></span>';
+      started = true;
+    }
     const isSelected = selected && selected.getFullYear()===year && selected.getMonth()===month && selected.getDate()===d;
     cells += `<span onclick="pickExcDate('${key}',${year},${month},${d})" style="cursor:pointer; padding:6px 0; text-align:center; border-radius:6px; font-size:12.5px; ${isSelected?'background:var(--teal);color:#fff;font-weight:700;':''}">${d}</span>`;
   }
@@ -2146,10 +2154,10 @@ function renderExcCalendar(key){
       <b style="font-size:12.5px;">${year}年${month+1}月</b>
       <button type="button" onclick="shiftExcMonth('${key}',1,event)" style="all:unset; cursor:pointer; padding:2px 8px; font-size:13px;">→</button>
     </div>
-    <div style="display:grid; grid-template-columns:repeat(7,1fr); gap:2px; font-size:10.5px; color:var(--ink-soft); text-align:center; margin-bottom:4px;">
-      <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+    <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:2px; font-size:10.5px; color:var(--ink-soft); text-align:center; margin-bottom:4px;">
+      <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span>
     </div>
-    <div style="display:grid; grid-template-columns:repeat(7,1fr); gap:2px;">${cells}</div>
+    <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:2px;">${cells}</div>
     ${key==='end' ? `<button type="button" onclick="clearExcEndDate()" style="all:unset; cursor:pointer; font-size:11px; color:var(--ink-soft); margin-top:6px; display:block;">清除結束日期</button>`:''}
   `;
 }
@@ -2255,13 +2263,21 @@ function renderTopbarCalendarPanel(key){
   const panel = document.getElementById(`topbarCal_${key}`);
   if(!panel || !cfg.viewMonth) return;
   const {year, month} = cfg.viewMonth;
-  const first = new Date(year, month, 1);
-  const startWeekday = first.getDay();
   const daysInMonth = new Date(year, month+1, 0).getDate();
   const selectedStr = cfg.getValue();
+  // Center is closed weekends, so the picker only shows Mon-Fri (5 columns).
+  // Skip Sat/Sun entirely rather than rendering them disabled — the grid
+  // auto-wraps every 5 weekday cells into a correct row with no gaps.
   let cells = '';
-  for(let i=0;i<startWeekday;i++) cells += '<span></span>';
+  let started = false;
   for(let d=1; d<=daysInMonth; d++){
+    const wd = new Date(year, month, d).getDay();
+    if(wd===0 || wd===6) continue;
+    if(!started){
+      const monIdx = (wd+6)%7; // Mon=0..Fri=4
+      for(let i=0;i<monIdx;i++) cells += '<span></span>';
+      started = true;
+    }
     const cellStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const isSelected = cellStr === selectedStr;
     const isToday = cellStr === todayStr();
@@ -2273,10 +2289,10 @@ function renderTopbarCalendarPanel(key){
       <b style="font-size:12.5px;">${year}年${month+1}月</b>
       <button type="button" onclick="shiftTopbarMonth('${key}',1,event)" style="all:unset; cursor:pointer; padding:2px 8px; font-size:13px;">→</button>
     </div>
-    <div style="display:grid; grid-template-columns:repeat(7,1fr); gap:2px; font-size:10.5px; color:var(--ink-soft); text-align:center; margin-bottom:4px;">
-      <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+    <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:2px; font-size:10.5px; color:var(--ink-soft); text-align:center; margin-bottom:4px;">
+      <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span>
     </div>
-    <div style="display:grid; grid-template-columns:repeat(7,1fr); gap:2px;">${cells}</div>
+    <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:2px;">${cells}</div>
   `;
 }
 function shiftTopbarMonth(key, delta, evt){
