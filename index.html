@@ -3241,10 +3241,7 @@ function openAndPrintDoc(title, innerHtml, orientation){
     win.document.close();
     try{ win.focus(); }catch(e){}
     // Give the new tab a moment to finish laying out before printing.
-    // A doc that needs to measure its own layout first (to compute exact
-    // pagination instead of guessing) sets window.__autoprintHandled and
-    // calls print() itself once ready — skip our own auto-print then.
-    setTimeout(()=>{ try{ if(!win.__autoprintHandled) win.print(); }catch(e){ showToast('已開啟列印分頁，請按 Ctrl+P／⌘+P 列印'); } }, 300);
+    setTimeout(()=>{ try{ win.print(); }catch(e){ showToast('已開啟列印分頁，請按 Ctrl+P／⌘+P 列印'); } }, 300);
   }catch(err){
     console.error('openAndPrintDoc failed', err);
     showToast('列印時發生錯誤：'+(err && err.message ? err.message : err));
@@ -3355,120 +3352,66 @@ function printUberWaiver(){
     waive and release GENTLE HEART DAYCARE CENTER, and its employees from all liability, injuries or loss arising out of,
     connected with, or in any way associated with my choice of transportation.
   `;
-  const SPARE_ROWS = 8;
-  const realRows = sched.map(x=>({id:x.client.id, en:x.client.enName, cn:x.client.cnName, uber:x.client.subMode==='Uber'?'Uber':''}));
-
   // Some print/PDF renderers don't reliably repeat a table's <thead> across
   // pages, which dropped the waiver text from every page after the first.
   // So instead of one long table, split into explicit per-page tables —
   // each with its own copy of the waiver text and column headers — and
   // force a page break between them, the same way the driver route sheets do.
   //
-  // How many rows actually fit on one physical page depends on the exact
-  // rendered row height, which varies by printer/renderer — guessing that
-  // number (18, then 15, then 12...) kept being wrong: too high silently
-  // overflowed a row onto a near-blank extra page, too low wasted paper.
-  // So instead of guessing, the printed page itself measures a real
-  // rendered row and the header/waiver overhead once its stylesheet and
-  // fonts are loaded, computes exactly how many rows fit, and only then
-  // paginates and prints — see the embedded script below.
-  const titleBoxHtml = `<div style="background:#EDEAE1; color:#2B2620; padding:16px 20px; border-radius:8px; text-align:center; margin-bottom:16px;">
-      <div class="print-title" style="color:#2B2620; margin-bottom:4px;">Gentle Heart Daycare Center Transportation Waiver</div>
-      <div style="font-size:16px; font-weight:800; letter-spacing:.02em; color:#8C4B32; margin-bottom:6px;">📅 ${fmtDateEnglish(scheduleDate)}</div>
-      <div class="print-sub" style="color:#5A5347; margin-bottom:0;">Self-Drive / Uber — ${sched.length} Expected</div>
-    </div>`;
-  const theadHtml = `<thead>
-      <tr><td colspan="7" style="border:none; padding:0 0 12px; font-size:13px; color:#333; line-height:1.5; font-weight:400; text-align:left;">${WAIVER_TEXT}</td></tr>
-      <tr><th style="width:36px;">ID</th><th>English Name</th><th>Chinese Name</th><th style="width:60px;">Uber</th><th>Time In</th><th>Time Out</th><th style="width:22%;">Signature</th></tr>
-    </thead>`;
-  // Measure using whichever real row has the longest name text, as a
-  // conservative (tallest-likely) stand-in in case a long name wraps to
-  // two lines and makes that row taller than a typical one.
-  const measureRow = realRows.length
-    ? realRows.reduce((a,b)=> (a.en.length+a.cn.length) >= (b.en.length+b.cn.length) ? a : b)
-    : {id:'000', en:'Zhang, Weixin', cn:'张伟新'};
+  // Real rows and the trailing spare blank rows are chunked together as one
+  // list (not real-rows-then-spare-rows-tacked-on-at-the-end), so every page
+  // — including the last one — respects the same per-page row cap and never
+  // silently overflows onto an extra, mostly-blank physical page.
+  //
+  // ROWS_PER_PAGE=12 was measured (not guessed) against the real title box
+  // + waiver text + header overhead and the longest real client name on
+  // file, at the current 20px bold font, on an A4 portrait page with 10mm
+  // margins — see the printUberWaiver commit history for the measurement.
+  const ROWS_PER_PAGE = 12;
+  const SPARE_ROWS = 8;
+  const realRows = sched.map(x=>({id:x.client.id, en:x.client.enName, cn:x.client.cnName, uber:x.client.subMode==='Uber'?'Uber':''}));
+  const noticeRows = realRows.length ? [] : [{notice:true}];
+  const allRows = [...noticeRows, ...realRows, ...Array.from({length:SPARE_ROWS}).map(()=>({blank:true}))];
+  const pages = [];
+  for(let i=0; i<allRows.length; i+=ROWS_PER_PAGE) pages.push(allRows.slice(i, i+ROWS_PER_PAGE));
+  if(!pages.length) pages.push([]);
 
-  const dataPayload = {rows: realRows, spareRows: SPARE_ROWS, measureRow, titleBoxHtml, theadHtml};
+  const rowHtml = r => {
+    if(r.notice) return `<tr><td colspan="7" style="text-align:center;color:#777;">No self-drive/Uber participants today</td></tr>`;
+    if(r.blank) return `<tr style="height:28px; page-break-inside:avoid; break-inside:avoid;"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`;
+    return `<tr style="page-break-inside:avoid; break-inside:avoid;">
+      <td>${escapeHtml(r.id)}</td>
+      <td>${escapeHtml(r.en)}</td>
+      <td>${escapeHtml(r.cn)}</td>
+      <td>${escapeHtml(r.uber)}</td>
+      <td></td><td></td><td></td>
+    </tr>`;
+  };
+
+  const pageTable = (pageRows) => `
+    <table class="sig-table wp-table">
+      <thead>
+        <tr><td colspan="7" style="border:none; padding:0 0 12px; font-size:13px; color:#333; line-height:1.5; font-weight:400; text-align:left;">${WAIVER_TEXT}</td></tr>
+        <tr><th style="width:36px;">ID</th><th>English Name</th><th>Chinese Name</th><th style="width:60px;">Uber</th><th>Time In</th><th>Time Out</th><th style="width:22%;">Signature</th></tr>
+      </thead>
+      <tbody>
+        ${pageRows.map(rowHtml).join('')}
+      </tbody>
+    </table>`;
 
   const html = `
     ${SIGN_IN_FONT_TAG}
     <style>.wp-page{page-break-after:always;} .wp-page:last-child{page-break-after:auto;}</style>
-    <script id="wp-data" type="application/json">${JSON.stringify(dataPayload)}<\/script>
-    <div id="wp-measure" class="wp-page" style="position:absolute; left:-9999px; top:0; visibility:hidden;"></div>
-    <div id="wp-output"></div>
-    <script>
-    (function(){
-      window.__autoprintHandled = true;
-      var DATA = JSON.parse(document.getElementById('wp-data').textContent);
-      function esc(s){
-        return String(s==null?'':s).replace(/[&<>"']/g, function(c){
-          return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
-        });
-      }
-      function rowHtml(r){
-        if(r.notice) return '<tr><td colspan="7" style="text-align:center;color:#777;">No self-drive/Uber participants today</td></tr>';
-        if(r.blank) return '<tr style="height:28px; page-break-inside:avoid; break-inside:avoid;"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>';
-        return '<tr style="page-break-inside:avoid; break-inside:avoid;">'
-          + '<td>' + esc(r.id) + '</td>'
-          + '<td>' + esc(r.en) + '</td>'
-          + '<td>' + esc(r.cn) + '</td>'
-          + '<td>' + esc(r.uber) + '</td>'
-          + '<td></td><td></td><td></td>'
-          + '</tr>';
-      }
-      function pageHtml(pageRows){
-        return '<div class="wp-page">' + DATA.titleBoxHtml
-          + '<table class="sig-table wp-table">' + DATA.theadHtml
-          + '<tbody>' + pageRows.map(rowHtml).join('') + '</tbody></table></div>';
-      }
-      function run(){
-        var mmToPx = 96/25.4;
-        var usableWidth = (210 - 20) * mmToPx; // A4 portrait minus 10mm left+right margins
-        var usableHeight = (297 - 20) * mmToPx; // A4 portrait minus 10mm top+bottom margins
-
-        var measureEl = document.getElementById('wp-measure');
-        // On-screen preview width (.print-page-inner's max-width) differs
-        // from the actual printed page width, and column text can wrap
-        // differently depending on width — so force this scaffold to the
-        // real printed width before measuring, or the row height measured
-        // here won't match what actually prints.
-        measureEl.style.width = usableWidth + 'px';
-        measureEl.innerHTML = DATA.titleBoxHtml
-          + '<table class="sig-table wp-table">' + DATA.theadHtml
-          + '<tbody>' + rowHtml(DATA.measureRow) + '</tbody></table>';
-        var pageRect = measureEl.getBoundingClientRect();
-        var rowEl = measureEl.querySelector('tbody tr');
-        var rowRect = rowEl.getBoundingClientRect();
-        var overhead = rowRect.top - pageRect.top;
-        var rowHeight = rowRect.height;
-        var SAFETY_PX = 10; // small cushion for renderer-to-renderer rounding, not a whole spare row
-        var rowsPerPage = Math.max(1, Math.floor((usableHeight - overhead - SAFETY_PX) / rowHeight));
-
-        var real = DATA.rows;
-        var notice = real.length ? [] : [{notice:true}];
-        var spare = [];
-        for(var i=0;i<DATA.spareRows;i++) spare.push({blank:true});
-        var all = notice.concat(real, spare);
-        var pages = [];
-        for(var j=0;j<all.length;j+=rowsPerPage) pages.push(all.slice(j, j+rowsPerPage));
-        if(!pages.length) pages.push([]);
-
-        document.getElementById('wp-output').innerHTML = pages.map(pageHtml).join('');
-        measureEl.remove();
-        requestAnimationFrame(function(){ requestAnimationFrame(function(){
-          try{ window.print(); }catch(e){}
-        }); });
-      }
-      function start(){
-        // Measuring before web fonts finish loading would size the row
-        // against the fallback font instead of the real one.
-        if(document.fonts && document.fonts.ready) document.fonts.ready.then(run).catch(run);
-        else run();
-      }
-      if(document.readyState === 'complete') start();
-      else window.addEventListener('load', start);
-    })();
-    <\/script>`;
+    ${pages.map((pageRows)=>`
+      <div class="wp-page">
+        <div style="background:#EDEAE1; color:#2B2620; padding:16px 20px; border-radius:8px; text-align:center; margin-bottom:16px;">
+          <div class="print-title" style="color:#2B2620; margin-bottom:4px;">Gentle Heart Daycare Center Transportation Waiver</div>
+          <div style="font-size:16px; font-weight:800; letter-spacing:.02em; color:#8C4B32; margin-bottom:6px;">📅 ${fmtDateEnglish(scheduleDate)}</div>
+          <div class="print-sub" style="color:#5A5347; margin-bottom:0;">Self-Drive / Uber — ${sched.length} Expected</div>
+        </div>
+        ${pageTable(pageRows)}
+      </div>
+    `).join('')}`;
   openAndPrintDoc(`自駕Uber免責簽到表_${scheduleDate}`, html, 'portrait');
  }catch(err){
   console.error('printUberWaiver failed', err);
