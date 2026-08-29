@@ -3681,6 +3681,10 @@ function printAdmissionPacket(){
   const tdStyle = 'border:1px solid #000; padding:7px 9px; text-align:left; vertical-align:middle;';
   const sectionStyle = 'font-weight:700; font-size:14.5px; margin:14px 0 6px; color:#000;';
   const pageBreakStyle = 'page-break-before:always; padding-top:6px;';
+  // Chinese first, English alongside in smaller gray text — the same
+  // pattern already used for section headers — applied everywhere a
+  // label/header appears on this form, not just section titles.
+  const bi = (cn, en) => `${cn}　<span style="font-size:10px;font-weight:400;color:#666;">${en}</span>`;
   const row = (label, value, opts) => {
     opts = opts || {};
     return `<tr><th style="${thStyle}">${label.replace(/\n/g,'<br>')}</th><td style="${tdStyle} height:${opts.tall?'42px':'26px'};">${value||''}</td></tr>`;
@@ -3733,36 +3737,36 @@ function printAdmissionPacket(){
 
       ${section('一','會員基本資料','PARTICIPANT INFORMATION')}
       ${table([
-        row('會員編號 ID',''),
-        row('中文姓名',''),
-        row('英文姓名',''),
-        row('出生日期 / 性別','＿＿＿＿年＿＿月＿＿日　性別：☐ 男　☐ 女'),
-        row('主要語言','☐ 普通話　☐ 廣東話　☐ 上海話　☐ 英語　☐ 其他：＿＿＿＿＿＿'),
-        row('家庭地址','',{tall:true}),
-        row('聯絡電話',''),
+        row(bi('會員編號','ID'),''),
+        row(bi('中文姓名','CHINESE NAME'),''),
+        row(bi('英文姓名','ENGLISH NAME'),''),
+        row(bi('出生日期 / 性別','DATE OF BIRTH / GENDER'),'＿＿＿＿年＿＿月＿＿日　性別：☐ 男　☐ 女'),
+        row(bi('主要語言','PRIMARY LANGUAGE'),'☐ 普通話　☐ 廣東話　☐ 上海話　☐ 英語　☐ 其他：＿＿＿＿＿＿'),
+        row(bi('家庭地址','HOME ADDRESS'),'',{tall:true}),
+        row(bi('聯絡電話','PHONE NUMBER'),''),
       ])}
 
       ${section('二','白卡及醫療保險','MEDI-CAL & HEALTH PLAN')}
-      <div style="font-weight:700; font-size:13.5px; margin:6px 0;">是否有白卡（Medi-Cal）？　☐ 有 YES　☐ 沒有 NO　☐ 不確定 NOT SURE</div>
+      <div style="font-weight:700; font-size:13.5px; margin:6px 0;">${bi('是否有白卡','DO YOU HAVE A MEDI-CAL CARD?')}　☐ 有 YES　☐ 沒有 NO　☐ 不確定 NOT SURE</div>
       ${table([
-        row('Medi-Cal / 白卡號碼',''),
-        row('醫療保險計畫','☐ LA Care　☐ Health Net　☐ Molina　☐ IEHP　☐ Blue Cross/Anthem　☐ 其他：＿＿＿＿＿＿'),
-        row('保險會員號碼 Member ID',''),
-        row('Medical Group 醫療集團',''),
+        row(bi('白卡號碼','MEDI-CAL NUMBER'),''),
+        row(bi('醫療保險計畫','HEALTH INSURANCE PLAN'),'☐ LA Care　☐ Health Net　☐ Molina　☐ IEHP　☐ Blue Cross/Anthem　☐ 其他：＿＿＿＿＿＿'),
+        row(bi('保險會員號碼','MEMBER ID'),''),
+        row(bi('醫療集團','MEDICAL GROUP'),''),
       ])}
 
       ${section('三','家庭醫生資料','PRIMARY CARE PHYSICIAN (PCP)')}
       ${table([
-        row('家庭醫生姓名',''),
-        row('診所名稱',''),
-        row('醫生電話 / 傳真','電話：＿＿＿＿＿＿＿＿＿＿　傳真：＿＿＿＿＿＿＿＿＿＿'),
-        row('資料狀態','☐ 已有醫生資料　☐ 需要工作人員協助查詢'),
+        row(bi('家庭醫生姓名','PHYSICIAN NAME'),''),
+        row(bi('診所名稱','CLINIC NAME'),''),
+        row(bi('醫生電話 / 傳真','PHONE / FAX'),'電話：＿＿＿＿＿＿＿＿＿＿　傳真：＿＿＿＿＿＿＿＿＿＿'),
+        row(bi('資料狀態','STATUS'),'☐ 已有醫生資料　☐ 需要工作人員協助查詢'),
       ])}
 
       ${section('四','緊急聯絡人','EMERGENCY CONTACT')}
       ${table([
-        row('姓名','＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿　與會員關係：＿＿＿＿＿＿＿＿'),
-        row('電話','＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿　☐ 子女　☐ 配偶　☐ 親屬　☐ 朋友　☐ 其他'),
+        row(bi('姓名','NAME'),'＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿　與會員關係：＿＿＿＿＿＿＿＿'),
+        row(bi('電話','PHONE'),'＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿　☐ 子女　☐ 配偶　☐ 親屬　☐ 朋友　☐ 其他'),
       ])}
       ${footerNote}
     </div>
@@ -3772,26 +3776,26 @@ function printAdmissionPacket(){
 
       ${section('五','交通接送','TRANSPORTATION')}
       ${table([
-        row('是否需要中心接送','☐ 需要 YES　☐ 不需要 NO　☐ 以後決定'),
-        row('接送地址','☐ 與家庭地址相同　☐ 不同：＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿'),
+        row(bi('是否需要中心接送','TRANSPORTATION NEEDED?'),'☐ 需要 YES　☐ 不需要 NO　☐ 以後決定'),
+        row(bi('接送地址','PICKUP ADDRESS'),'☐ 與家庭地址相同　☐ 不同：＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿'),
       ])}
 
       ${section('六','希望參加中心的天數','REQUESTED ATTENDANCE')}
       ${table([
-        row('每週天數','☐ 3 天　☐ 4 天　☐ 5 天　☐ 尚未確定'),
-        row('希望參加','☐ 週一　☐ 週二　☐ 週三　☐ 週四　☐ 週五'),
+        row(bi('每週天數','DAYS PER WEEK'),'☐ 3 天　☐ 4 天　☐ 5 天　☐ 尚未確定'),
+        row(bi('希望參加','PREFERRED DAYS'),'☐ 週一　☐ 週二　☐ 週三　☐ 週四　☐ 週五'),
       ])}
 
       ${section('七','飲食特別需要','SPECIAL DIETARY NEEDS')}
       ${table([
-        row('飲食','☐ 普通餐　☐ 糖尿病餐　☐ 低鹽　☐ 素食　☐ 不吃豬肉　☐ 清真　☐ 其他：＿＿＿＿＿＿'),
-        row('食物過敏','☐ 無　☐ 有，請注明：＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿'),
+        row(bi('飲食','DIET'),'☐ 普通餐　☐ 糖尿病餐　☐ 低鹽　☐ 素食　☐ 不吃豬肉　☐ 清真　☐ 其他：＿＿＿＿＿＿'),
+        row(bi('食物過敏','FOOD ALLERGIES'),'☐ 無　☐ 有，請注明：＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿'),
       ])}
 
       ${section('八','介紹來源','REFERRAL SOURCE')}
       ${table([
-        row('如何知道本中心','☐ 朋友/家人　☐ 會員介紹　☐ 醫生/診所　☐ 保險公司　☐ 微信/網絡　☐ 廣告　☐ 其他'),
-        row('介紹人姓名',''),
+        row(bi('如何知道本中心','HOW DID YOU HEAR ABOUT US?'),'☐ 朋友/家人　☐ 會員介紹　☐ 醫生/診所　☐ 保險公司　☐ 微信/網絡　☐ 廣告　☐ 其他'),
+        row(bi('介紹人姓名','REFERRED BY'),''),
       ])}
 
       ${section('九','本人同意申請加入中心','CONSENT TO BEGIN ENROLLMENT PROCESS')}
@@ -3802,20 +3806,20 @@ function printAdmissionPacket(){
 
     <div style="${pageBreakStyle}">
       ${table([
-        row('簽字人','☐ 會員本人　☐ 家屬 / 授權代表'),
-        row('會員姓名',''),
-        row('會員/代表簽字',''),
-        row('日期 / 時間','＿＿＿＿年＿＿月＿＿日　＿＿＿＿＿＿＿＿'),
-        row('如代表簽字：\n姓名/關係/電話','姓名：＿＿＿＿＿＿＿＿　關係：＿＿＿＿＿＿　電話：＿＿＿＿＿＿＿＿＿＿'),
+        row(bi('簽字人','SIGNED BY'),'☐ 會員本人　☐ 家屬 / 授權代表'),
+        row(bi('會員姓名','PARTICIPANT NAME'),''),
+        row(bi('會員/代表簽字','SIGNATURE'),''),
+        row(bi('日期 / 時間','DATE / TIME'),'＿＿＿＿年＿＿月＿＿日　＿＿＿＿＿＿＿＿'),
+        row(bi('如代表簽字：\n姓名/關係/電話','IF SIGNED BY REPRESENTATIVE:\nNAME / RELATIONSHIP / PHONE'),'姓名：＿＿＿＿＿＿＿＿　關係：＿＿＿＿＿＿　電話：＿＿＿＿＿＿＿＿＿＿'),
       ])}
 
       ${section('十','經辦人員確認','STAFF USE')}
       ${table([
-        row('首次接待人員','☐ 前台　☐ 社工　☐ 社工助理　☐ Program Director　☐ 其他'),
-        row('經辦人姓名 / 簽字','姓名：＿＿＿＿＿＿＿＿＿＿　簽字：＿＿＿＿＿＿＿＿＿＿'),
-        row('日期 / 時間','＿＿＿＿年＿＿月＿＿日　＿＿＿＿＿＿＿＿'),
-        row('已檢查','☐ 基本資料完整　☐ 白卡已確認　☐ 保險已確認　☐ PCP資料　☐ 緊急聯絡人　☐ 客人已簽字'),
-        row('轉交社工','姓名：＿＿＿＿＿＿＿＿＿＿　日期：＿＿＿＿＿＿　時間：＿＿＿＿＿＿　接收簽字：＿＿＿＿＿＿＿＿＿＿'),
+        row(bi('首次接待人員','INITIAL CONTACT STAFF'),'☐ 前台　☐ 社工　☐ 社工助理　☐ Program Director　☐ 其他'),
+        row(bi('經辦人姓名 / 簽字','STAFF NAME / SIGNATURE'),'姓名：＿＿＿＿＿＿＿＿＿＿　簽字：＿＿＿＿＿＿＿＿＿＿'),
+        row(bi('日期 / 時間','DATE / TIME'),'＿＿＿＿年＿＿月＿＿日　＿＿＿＿＿＿＿＿'),
+        row(bi('已檢查','ITEMS VERIFIED'),'☐ 基本資料完整　☐ 白卡已確認　☐ 保險已確認　☐ PCP資料　☐ 緊急聯絡人　☐ 客人已簽字'),
+        row(bi('轉交社工','TRANSFERRED TO SOCIAL WORKER'),'姓名：＿＿＿＿＿＿＿＿＿＿　日期：＿＿＿＿＿＿　時間：＿＿＿＿＿＿　接收簽字：＿＿＿＿＿＿＿＿＿＿'),
       ])}
       ${footerNote}
     </div>
@@ -3823,14 +3827,14 @@ function printAdmissionPacket(){
     <div style="${pageBreakStyle}">
       ${pageTitle('新會員入會及評估流程追蹤表','NEW PARTICIPANT ADMISSION & ASSESSMENT TRACKING CHECKLIST')}
       ${table([
-        row('會員姓名',''),
-        row('出生日期 / Health Plan','DOB：＿＿＿＿＿＿＿＿　Health Plan：＿＿＿＿＿＿＿＿＿＿'),
-        row('開始辦理日期 / 正式入會日期','Start：＿＿＿＿＿＿＿＿　Admission：＿＿＿＿＿＿＿＿'),
+        row(bi('會員姓名','PARTICIPANT NAME'),''),
+        row(bi('出生日期 / 保險計畫','DOB / HEALTH PLAN'),'DOB：＿＿＿＿＿＿＿＿　Health Plan：＿＿＿＿＿＿＿＿＿＿'),
+        row(bi('開始辦理日期 / 正式入會日期','INTAKE START DATE / ADMISSION DATE'),'Start：＿＿＿＿＿＿＿＿　Admission：＿＿＿＿＿＿＿＿'),
       ])}
       <p style="font-size:11.5px; font-weight:700; margin:6px 0 2px;">規定：每完成一個步驟，由實際經辦人員填寫完成日期、時間並簽字/縮寫。不得代替其他員工簽字。Program Director 負責複核。</p>
       <p style="font-size:9.5px; font-style:italic; color:#666; margin:0 0 8px;">Each task must be documented by the staff member who actually completed it. Do not sign for another staff member.</p>
       ${checklistTable(
-        ['#','工作項目 / Task','負責人','完成日期','時間','經辦人簽字','PD 複核'],
+        ['#',bi('工作項目','TASK'),bi('負責人','RESPONSIBLE'),bi('完成日期','DATE'),bi('時間','TIME'),bi('經辦人簽字','SIGNATURE'),bi('PD複核','PD REVIEW')],
         TASKS.map(([n,task,role])=>[n,task,role,'','','','']),
         [4,30,14,12,10,15,15]
       )}
@@ -3841,24 +3845,25 @@ function printAdmissionPacket(){
       ${pageTitle('最終審核及更正記錄','FINAL REVIEW & CORRECTION / FOLLOW-UP RECORD')}
       ${section('','最終審核','FINAL REVIEW')}
       ${table([
-        row('所有入會資料已完成','☐ 是 YES　☐ 否 NO'),
-        row('所有專業評估已完成','☐ 是 YES　☐ 否 NO'),
-        row('TAR / Authorization 已批准','☐ 是 YES　☐ 否 NO'),
-        row('可以正式入會','☐ 是 YES　☐ 否 NO'),
-        row('Program Director 最終審核','姓名：＿＿＿＿＿＿＿＿＿＿　簽字：＿＿＿＿＿＿＿＿＿＿'),
-        row('日期 / 時間','＿＿＿＿年＿＿月＿＿日　＿＿＿＿＿＿＿＿'),
-        row('Administrator Review（如需要）','姓名：＿＿＿＿＿＿＿＿＿＿　簽字：＿＿＿＿＿＿＿＿＿＿　日期：＿＿＿＿＿＿'),
+        row(bi('所有入會資料已完成','ALL DOCUMENTATION COMPLETE'),'☐ 是 YES　☐ 否 NO'),
+        row(bi('所有專業評估已完成','ALL ASSESSMENTS COMPLETE'),'☐ 是 YES　☐ 否 NO'),
+        row(bi('TAR／授權已批准','TAR / AUTHORIZATION APPROVED'),'☐ 是 YES　☐ 否 NO'),
+        row(bi('可以正式入會','READY FOR ADMISSION'),'☐ 是 YES　☐ 否 NO'),
+        row(bi('主任最終審核','PROGRAM DIRECTOR FINAL REVIEW'),'姓名：＿＿＿＿＿＿＿＿＿＿　簽字：＿＿＿＿＿＿＿＿＿＿'),
+        row(bi('日期 / 時間','DATE / TIME'),'＿＿＿＿年＿＿月＿＿日　＿＿＿＿＿＿＿＿'),
+        row(bi('管理層審核（如需要）','ADMINISTRATOR REVIEW (IF NEEDED)'),'姓名：＿＿＿＿＿＿＿＿＿＿　簽字：＿＿＿＿＿＿＿＿＿＿　日期：＿＿＿＿＿＿'),
       ])}
 
       ${section('','錯誤 / 缺件 / 補辦記錄','CORRECTION / FOLLOW-UP RECORD')}
       ${checklistTable(
-        ['項目#','問題 / 缺件','責任員工','更正日期/時間','員工簽字','PD 複核'],
+        [bi('項目#','#'),bi('問題 / 缺件','ISSUE'),bi('責任員工','RESPONSIBLE STAFF'),bi('更正日期/時間','DATE / TIME'),bi('員工簽字','SIGNATURE'),bi('PD複核','PD REVIEW')],
         Array.from({length:6}).map(()=>['','','','','','']),
         [10,26,18,20,15,11]
       )}
       <p style="font-size:11px; font-weight:700; color:#444; margin:8px 0 0;">檔案管理建議：本資料包放在每位新會員檔案最前面；第一頁由會員/家屬及接待人員完成，追蹤表隨入會流程逐項簽字，最終由 Program Director 審核。</p>
 
-      <p style="font-size:10px; font-style:italic; color:#777; margin:28px 0 0; border-top:1px solid #ccc; padding-top:8px;">Note: This packet supports internal workflow and accountability. It does not replace any separate HIPAA, medical-record release, health-plan, or service-specific authorization required by law, regulation, or contract.</p>
+      <p style="font-size:10px; color:#666; margin:28px 0 0; border-top:1px solid #ccc; padding-top:8px;">說明：本文件包用於內部作業流程及責任追蹤，並不能取代法律、法規或合約所要求的任何其他 HIPAA、病歷授權、醫療保險或特定服務的授權文件。</p>
+      <p style="font-size:9px; font-style:italic; color:#888; margin:2px 0 0;">Note: This packet supports internal workflow and accountability. It does not replace any separate HIPAA, medical-record release, health-plan, or service-specific authorization required by law, regulation, or contract.</p>
       ${footerNote}
     </div>
   `;
