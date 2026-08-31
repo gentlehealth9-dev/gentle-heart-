@@ -987,6 +987,12 @@ function getScheduledForDate(dateStr, opts){
     });
   }
   extraEntries.forEach(e=>{
+    // A leave entry for the same client/date always wins over an older or
+    // otherwise-unrelated extra entry — staff marking someone as 請假 must
+    // reliably remove them from the day's schedule, even if an extra entry
+    // for that date already existed (e.g. added earlier for a different
+    // reason and never cleaned up).
+    if(leaveIds.has(e.clientId)) return;
     const c = getClient(e.clientId);
     if(c){
       const {client, isAdjusted, adjustNote} = applyAdjust(c);
