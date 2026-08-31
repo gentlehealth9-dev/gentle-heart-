@@ -4472,6 +4472,11 @@ const ROUTE_PAGE_STYLE = `
   table.route-table th:nth-child(2),table.route-table th:nth-child(3),table.route-table td:nth-child(2),table.route-table td:nth-child(3){text-align:center;}
   table.route-table th:first-child,table.route-table td:first-child{text-align:center; padding-left:4px; padding-right:4px; overflow-wrap:break-word;}
   table.route-table th{background:#fff; font-size:15px; font-weight:700;}
+  /* The 5 office-tracking header columns are narrow enough that
+     word-wrap:break-word (needed above for the Address column) was
+     breaking mid-word ("Driver" -> "Drive"/"r") — give them their own
+     smaller, non-breaking treatment so each word stays whole. */
+  table.route-table th:nth-child(n+6){font-size:11px; white-space:nowrap; word-wrap:normal; overflow-wrap:normal; padding-left:4px; padding-right:4px;}
   table.route-table thead{display:table-header-group;}
   table.route-table tr{page-break-inside:avoid;}
   col.col-mrid{width:5%;}
