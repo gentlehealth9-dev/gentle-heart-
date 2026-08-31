@@ -304,7 +304,7 @@ body.print-mode-active .print-preview-pane{display:block;}
       <li><button data-tab="insurance"><span class="ico">◆</span>保險天數追蹤</button></li>
       <li><button data-tab="admission"><span class="ico">◆</span>新會員入會申請表</button></li>
     </ul>
-    <div class="side-foot">資料共用於辦公室所有使用者<br>最後同步：<span id="lastSync">—</span><br>版本：v2026-08-20-print3
+    <div class="side-foot">資料共用於辦公室所有使用者<br>最後同步：<span id="lastSync">—</span><br>上次備份：<span id="lastBackup">—</span><br>版本：v2026-08-20-print3
       <button class="btn tiny ghost" style="width:100%; justify-content:center; margin-top:8px; color:#D9D1BF; border-color:#4A6163;" onclick="manualRefresh()">🔄 重新整理資料</button>
       <br><br>
       <button class="btn tiny ghost" style="width:100%; justify-content:center; color:#D9D1BF; border-color:#4A6163;" onclick="exportBackup()">⬇ 匯出備份</button>
@@ -343,6 +343,7 @@ const STATUS_BADGE = {active:"", pending:"amber", returned_home:"gray", disconti
 let CLIENTS = [];      // array of client objects
 let EXCEPTIONS = {};   // { "YYYY-MM-DD": [ {clientId, type:'leave'|'extra', note, linkedDate} ] }
 let DRIVER_CAPACITIES = {}; // { driverName: number } 每位司機車輛可載座位上限（沒設定則用預設值）
+let LAST_BACKUP_AT = null; // ISO timestamp of the last exportBackup(), shared across everyone via app-state so any staff member's export counts for all
 let CURRENT_TAB = "dashboard";
 let DATA_READY = false;
 
@@ -426,6 +427,7 @@ async function loadData(){
       CLIENTS = Array.isArray(state.clients) ? state.clients : [];
       EXCEPTIONS = (state.exceptions && typeof state.exceptions === 'object') ? state.exceptions : {};
       DRIVER_CAPACITIES = (state.capacities && typeof state.capacities === 'object') ? state.capacities : {};
+      LAST_BACKUP_AT = typeof state.lastBackupAt === 'string' ? state.lastBackupAt : null;
     } else {
       loadFromSeed();
     }
@@ -435,6 +437,7 @@ async function loadData(){
   }
   DATA_READY = true;
   document.getElementById('lastSync').textContent = new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'});
+  updateBackupIndicator();
 }
 
 // One-time data migrations that shaped the original seed data. These only
@@ -832,7 +835,7 @@ function escapeStateForScriptTag(json){
 }
 
 function buildPublishHTML(){
-  const stateJSON = escapeStateForScriptTag(JSON.stringify({clients: CLIENTS, exceptions: EXCEPTIONS, capacities: DRIVER_CAPACITIES}));
+  const stateJSON = escapeStateForScriptTag(JSON.stringify({clients: CLIENTS, exceptions: EXCEPTIONS, capacities: DRIVER_CAPACITIES, lastBackupAt: LAST_BACKUP_AT}));
   // outerHTML never includes the doctype, so prefix it back on.
   const html = '<!doctype html>\n' + RAW_TEMPLATE;
   return html.replace(
@@ -4780,9 +4783,10 @@ function shiftInsMonth(n){
 /* =========================================================
    Backup / Restore (manual sync safety net across devices)
    ========================================================= */
-function exportBackup(){
+async function exportBackup(){
+  const exportedAt = new Date().toISOString();
   const payload = {
-    exportedAt: new Date().toISOString(),
+    exportedAt,
     clients: CLIENTS,
     exceptions: EXCEPTIONS,
     capacities: DRIVER_CAPACITIES
@@ -4797,6 +4801,28 @@ function exportBackup(){
   a.remove();
   URL.revokeObjectURL(url);
   showToast('已匯出備份檔案');
+  // Shared across everyone (not just this browser) so the sidebar
+  // indicator reflects the last backup ANY staff member took, not only
+  // ones taken from this specific computer.
+  LAST_BACKUP_AT = exportedAt;
+  updateBackupIndicator();
+  await persistState();
+}
+
+// Colors the sidebar's "上次備份" line so a stale backup is hard to miss
+// without needing a popup every time someone opens the app.
+function updateBackupIndicator(){
+  const el = document.getElementById('lastBackup');
+  if(!el) return;
+  if(!LAST_BACKUP_AT){
+    el.textContent = '從未備份';
+    el.style.color = 'var(--red, #A1443A)';
+    return;
+  }
+  const days = Math.floor((Date.now() - new Date(LAST_BACKUP_AT).getTime()) / 86400000);
+  const when = fmtDateHuman ? fmtDateHuman(LAST_BACKUP_AT.slice(0,10)) : LAST_BACKUP_AT.slice(0,10);
+  el.textContent = days<=0 ? '今天' : `${when}（${days} 天前）`;
+  el.style.color = days > 30 ? 'var(--red, #A1443A)' : days > 14 ? 'var(--amber, #B8822E)' : '#9FB3AE';
 }
 
 function importBackup(evt){
