@@ -207,12 +207,18 @@ table.datatable tr:hover td{background:#FAF6EE;}
   flex:1; min-width:0; height:44px; border-radius:6px; border:1.5px dashed var(--line);
   display:flex; align-items:center; justify-content:center; text-align:center;
   font-size:10.5px; line-height:1.25; color:var(--ink-soft); padding:2px; position:relative;
+  cursor:pointer;
 }
 .seat-slot.occupied{
   border-style:solid; border-color:#C9DFC9; background:var(--sage-soft); color:#2E4E33;
   cursor:grab; font-weight:700; font-size:14px;
 }
 .seat-slot.drag-over{border-color:var(--teal); background:#DCEAE8;}
+.seat-slot-input{
+  flex:1; min-width:0; height:44px; border-radius:6px; border:1.5px solid var(--teal);
+  text-align:center; font-size:13px; font-weight:700; color:var(--ink); padding:2px;
+  outline:none; background:#fff;
+}
 .seat-slot .seat-remove{
   position:absolute; top:-6px; right:-6px; width:16px; height:16px; border-radius:50%;
   background:var(--red); color:#fff; font-size:10px; line-height:16px; text-align:center;
@@ -5041,11 +5047,9 @@ function renderSeating(root){
             ${escapeHtml(c.id)}
           </div>`;
       }
-      if(clientId){
-        // Seat points at a client id that no longer exists/isn't active — show it as empty rather than crashing.
-        return `<div class="seat-slot" ondragover="event.preventDefault(); this.classList.add('drag-over');" ondragleave="this.classList.remove('drag-over');" ondrop="handleSeatDrop(event, '${seatId}')">空位</div>`;
-      }
-      return `<div class="seat-slot" ondragover="event.preventDefault(); this.classList.add('drag-over');" ondragleave="this.classList.remove('drag-over');" ondrop="handleSeatDrop(event, '${seatId}')">空位</div>`;
+      // Empty seat (or one pointing at a client id that no longer exists/isn't
+      // active — treat that the same as empty rather than crashing).
+      return `<div class="seat-slot" ondragover="event.preventDefault(); this.classList.add('drag-over');" ondragleave="this.classList.remove('drag-over');" ondrop="handleSeatDrop(event, '${seatId}')" onclick="startSeatEntry(this, '${seatId}')">空位</div>`;
     };
     return `<div class="seat-table">
         <div class="table-label">桌 ${tableNum}</div>
@@ -5110,26 +5114,50 @@ function renderSeatingRoster(){
   const list = document.getElementById('seatingRosterList');
   if(list) list.innerHTML = roster.map(c=>seatChipHtml(c, assignedIds)).join('');
 }
-async function handleSeatDrop(evt, seatId){
-  evt.preventDefault();
-  evt.currentTarget.classList.remove('drag-over');
-  const clientId = seatingDragClientId || evt.dataTransfer.getData('text/plain');
-  seatingDragClientId = null;
-  if(!clientId) return;
+async function assignSeat(seatId, clientId){
   if(SEATS[seatId] && SEATS[seatId]!==clientId){
     showToast('這個位子已經有人了，請先把原本的人移開');
-    return;
+    return false;
   }
   // A member can only sit in one seat — clear wherever they were before.
   const oldSeatId = findSeatOfClient(clientId);
   if(oldSeatId) delete SEATS[oldSeatId];
   SEATS[seatId] = clientId;
   await persistState();
+  return true;
+}
+async function handleSeatDrop(evt, seatId){
+  evt.preventDefault();
+  evt.currentTarget.classList.remove('drag-over');
+  const clientId = seatingDragClientId || evt.dataTransfer.getData('text/plain');
+  seatingDragClientId = null;
+  if(!clientId) return;
+  await assignSeat(seatId, clientId);
   render();
 }
 async function unassignSeat(seatId){
   delete SEATS[seatId];
   await persistState();
+  render();
+}
+// Click-to-type: lets staff assign a seat by typing a member's id directly,
+// which is much faster than drag-and-drop when transcribing a big batch of
+// seat assignments (e.g. from a handwritten seating sheet).
+function startSeatEntry(el, seatId){
+  el.outerHTML = `<input type="text" class="seat-slot-input" id="seatInput-${escapeHtml(seatId)}" placeholder="編號" autocomplete="off"
+      onkeydown="if(event.key==='Enter'){ this.blur(); } else if(event.key==='Escape'){ this.dataset.cancel='1'; this.blur(); }"
+      onblur="confirmSeatEntry(this, '${seatId}')">`;
+  const input = document.getElementById(`seatInput-${seatId}`);
+  if(input) input.focus();
+}
+async function confirmSeatEntry(inputEl, seatId){
+  if(inputEl.dataset.cancel){ render(); return; }
+  const raw = inputEl.value.trim();
+  if(!raw){ render(); return; }
+  const c = getClient(raw);
+  if(!c){ showToast(`找不到編號「${raw}」的會員`); render(); return; }
+  if(c.status!=='active'){ showToast(`「${c.cnName||c.enName}」不是使用中的會員`); render(); return; }
+  await assignSeat(seatId, c.id);
   render();
 }
 
