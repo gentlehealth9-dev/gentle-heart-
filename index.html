@@ -2265,6 +2265,17 @@ const TOPBAR_PICKERS = {
   dashboard: {getValue:()=>dashboardDate, setValue:(v)=>{ dashboardDate=v; render(); }},
   kitchen:   {getValue:()=>kitchenDate,   setValue:(v)=>{ kitchenDate=v; render(); }}
 };
+function setTopbarDateQuick(key, offsetDays){
+  const cfg = TOPBAR_PICKERS[key];
+  if(!cfg) return;
+  cfg.setValue(addDays(todayStr(), offsetDays));
+}
+function renderTopbarQuickDateButtons(key){
+  return `
+    <button class="btn ghost sm" onclick="setTopbarDateQuick('${key}', 0)">今天</button>
+    <button class="btn ghost sm" onclick="setTopbarDateQuick('${key}', 1)">明天</button>
+  `;
+}
 function renderTopbarDateButton(key){
   const cfg = TOPBAR_PICKERS[key];
   const value = cfg.getValue();
@@ -2639,6 +2650,7 @@ function renderSchedule(root){
         <div class="page-sub">${fmtDateHuman(scheduleDate)} · 預計到訪 ${sched.length} 位</div>
       </div>
       <div class="actions" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        ${renderTopbarQuickDateButtons('schedule')}
         ${renderTopbarDateButton('schedule')}
         <button class="btn ghost" onclick="printSignIn()">🖨 列印公司接送簽到表</button>
         <button class="btn ghost" onclick="printUberWaiver()">🖨 列印自駕／Uber免責簽到表</button>
@@ -4714,7 +4726,8 @@ function renderKitchen(root){
         <div class="page-title">廚房飲食需求</div>
         <div class="page-sub">${fmtDateHuman(kitchenDate)} · 總用餐 ${sched.length} 人，需特殊飲食 ${withDiet.length} 人</div>
       </div>
-      <div class="actions" style="display:flex; gap:8px; align-items:center;">
+      <div class="actions" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        ${renderTopbarQuickDateButtons('kitchen')}
         ${renderTopbarDateButton('kitchen')}
         <button class="btn ghost" onclick="printKitchen()">🖨 列印廚房單</button>
         <button class="btn ghost" onclick="printSpecialDiet()">🖨 特殊飲食分類單（依日期）</button>
