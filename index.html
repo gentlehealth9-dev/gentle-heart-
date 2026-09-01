@@ -210,7 +210,7 @@ table.datatable tr:hover td{background:#FAF6EE;}
 }
 .seat-slot.occupied{
   border-style:solid; border-color:#C9DFC9; background:var(--sage-soft); color:#2E4E33;
-  cursor:grab; font-weight:600;
+  cursor:grab; font-weight:700; font-size:14px;
 }
 .seat-slot.drag-over{border-color:var(--teal); background:#DCEAE8;}
 .seat-slot .seat-remove{
@@ -5038,7 +5038,7 @@ function renderSeating(root){
             ondrop="handleSeatDrop(event, '${seatId}')"
             title="${escapeHtml(c.id)} ${escapeHtml(c.enName)} ${escapeHtml(c.cnName)}">
             <span class="seat-remove" onclick="event.stopPropagation(); unassignSeat('${seatId}')">✕</span>
-            ${escapeHtml(c.id)}<br>${escapeHtml(c.cnName||c.enName)}
+            ${escapeHtml(c.id)}
           </div>`;
       }
       if(clientId){
