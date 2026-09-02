@@ -3715,11 +3715,11 @@ function printSignIn(){
   // longer) so no cell in this sheet ever wraps — a cleaner, single-line
   // look, per staff request.
   const idColStyleTag = `<style>
-    .id-cell{white-space:nowrap; max-width:90px; overflow:hidden; text-overflow:ellipsis; font-size:13px;}
+    .id-cell{white-space:nowrap; max-width:90px; overflow:hidden; text-overflow:ellipsis; font-size:15px;}
     .en-cell{white-space:nowrap; max-width:170px; overflow:hidden; text-overflow:ellipsis;}
     .cn-cell{white-space:nowrap; max-width:120px; overflow:hidden; text-overflow:ellipsis;}
     table.sig-table thead th{white-space:nowrap;}
-    table.sig-table{font-size:18px;}</style>`;
+    table.sig-table{font-size:20px;}</style>`;
   const theadHtml = `<thead><tr><th class="id-cell">ID</th><th>English Name</th><th>Chinese Name</th><th>Time In</th><th>Time Out</th><th style="width:22%;">Signature</th></tr></thead>`;
   const rowHtml = x => `<tr>
       <td class="id-cell" title="${escapeHtml(x.client.id)}">${escapeHtml(x.client.id)}</td>
@@ -3776,11 +3776,11 @@ function printUberWaiver(){
   // clip (rather than wrap) long IDs so every row stays exactly one line
   // tall — the fill-to-bottom math below assumes uniform row height.
   const idColStyleTag = `<style>
-    .id-cell{white-space:nowrap; max-width:90px; overflow:hidden; text-overflow:ellipsis; font-size:13px;}
+    .id-cell{white-space:nowrap; max-width:90px; overflow:hidden; text-overflow:ellipsis; font-size:15px;}
     .en-cell{white-space:nowrap; max-width:170px; overflow:hidden; text-overflow:ellipsis;}
     .cn-cell{white-space:nowrap; max-width:120px; overflow:hidden; text-overflow:ellipsis;}
     table.sig-table thead th{white-space:nowrap;}
-    table.sig-table{font-size:18px;}</style>`;
+    table.sig-table{font-size:20px;}</style>`;
   const theadHtml = `<thead>
       <tr><td colspan="7" style="border:none; padding:0 0 12px; font-size:13px; color:#333; line-height:1.5; font-weight:400; text-align:left;">${WAIVER_TEXT}</td></tr>
       <tr><th class="id-cell">ID</th><th>English Name</th><th>Chinese Name</th><th style="width:60px;">Uber</th><th>Time In</th><th>Time Out</th><th style="width:22%;">Signature</th></tr>
