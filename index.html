@@ -3959,15 +3959,13 @@ function renderAdmissionPacket(root){
         5️⃣ 最終審核及更正記錄、HIPAA 聲明<br>
         6️⃣ Intake Information（Gentle Heart ADHC/CBAS 官方表格）<br>
         7️⃣ Intake Evaluation（Gentle Heart ADHC/CBAS 官方表格，ADL/IADL 評估）<br><br>
-        按上方「🖨 列印入會申請表」會一次列印全部七頁；如果只需要第6、7頁的官方表格，可以用下面兩個按鈕單獨列印。
+        按上方「🖨 列印入會申請表」會一次列印全部七頁；如果只需要第6、7頁的官方表格，可以用下面的按鈕單獨列印（兩頁會一起印出來）。
       </div>
     </div>
     <div class="card card-pad">
       <div class="section-label" style="margin-bottom:8px;">Gentle Heart ADHC/CBAS 官方表格（單獨列印）</div>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <button class="btn ghost" onclick="printIntakeInformation()">🖨 列印 Intake Information</button>
-        <button class="btn ghost" onclick="printIntakeEvaluation()">🖨 列印 Intake Evaluation</button>
-      </div>
+      <div style="font-size:12px; color:var(--ink-soft); margin-bottom:8px;">Intake Information 跟 Intake Evaluation 是同一份官方表格的兩頁，會一起列印成一份文件。</div>
+      <button class="btn ghost" onclick="printIntakeForms()">🖨 列印 Intake Information + Evaluation</button>
     </div>
   `;
 }
@@ -4095,19 +4093,16 @@ function buildIntakeEvaluationHtml(){
     ${ADM_footerNote}
   `;
 }
-function printIntakeInformation(){
+// Intake Information and Intake Evaluation are two pages of the same
+// official Gentle Heart ADHC/CBAS intake packet — always used together,
+// so they print together as one document, separate from the internal
+// 7-page admission-workflow packet.
+function printIntakeForms(){
  try{
-  openAndPrintDoc('Intake_Information', buildIntakeInformationHtml(), 'portrait');
+  const html = `${buildIntakeInformationHtml()}<div style="${ADM_pageBreakStyle}">${buildIntakeEvaluationHtml()}</div>`;
+  openAndPrintDoc('Intake_Information_and_Evaluation', html, 'portrait');
  }catch(err){
-  console.error('printIntakeInformation failed', err);
-  showToast('產生表單時發生錯誤：'+(err && err.message ? err.message : err));
- }
-}
-function printIntakeEvaluation(){
- try{
-  openAndPrintDoc('Intake_Evaluation', buildIntakeEvaluationHtml(), 'portrait');
- }catch(err){
-  console.error('printIntakeEvaluation failed', err);
+  console.error('printIntakeForms failed', err);
   showToast('產生表單時發生錯誤：'+(err && err.message ? err.message : err));
  }
 }
