@@ -4704,17 +4704,33 @@ function measureRouteMetrics(){
 }
 function estimateRouteRowHeight(x, baseRowHeight){
   const cnText = x.client.cnName + (x.returnOnly ? ' (回程)' : '');
-  const isTall = (x.client.address||'').length > 25 || (x.client.enName||'').length > 16 || cnText.length > 6;
+  // Column widths (esp. Address at 28% of a landscape page) turned out to
+  // comfortably fit addresses well past this length without wrapping —
+  // verified against real printed PDFs — so this threshold was raised
+  // from 25 to cut down how often rows get flagged "tall" when they
+  // print at the normal single-line height.
+  const isTall = (x.client.address||'').length > 40 || (x.client.enName||'').length > 16 || cnText.length > 6;
   return isTall ? Math.round(baseRowHeight * 1.33) : baseRowHeight;
 }
+// measureRouteMetrics() measures live on-screen (this component rendered
+// off-screen in the running app), not inside the actual isolated print
+// document — verified against real printed PDFs to consistently run
+// taller than what Chromium's print layout actually produces (font
+// metrics differ slightly between the two contexts). ROUTE_PRINT_CORRECTION
+// scales the on-screen numbers down to match real print output, so spare
+// rows fill the page instead of leaving a large blank gap unused.
+const ROUTE_PRINT_CORRECTION = 0.8;
 function estimateRouteSpareRows(chunk){
-  const {overhead, rowHeight, blankRowHeight} = measureRouteMetrics();
+  const raw = measureRouteMetrics();
+  const overhead = raw.overhead * ROUTE_PRINT_CORRECTION;
+  const rowHeight = raw.rowHeight * ROUTE_PRINT_CORRECTION;
+  const blankRowHeight = raw.blankRowHeight * ROUTE_PRINT_CORRECTION;
   // Real addresses vary in length far more than the length-based "is this
-  // row tall" heuristic above can perfectly predict, so this carries a much
-  // larger safety margin than the fixed-field sign-in sheets — a modest
+  // row tall" heuristic above can perfectly predict, so this still carries
+  // a modest safety margin on top of the correction above — a small
   // unfilled gap at the bottom is a fine outcome; spare rows tipping a
   // driver's page onto a wasted extra page is not.
-  const usableHeight = A4_LANDSCAPE_USABLE_HEIGHT_PX - 150;
+  const usableHeight = A4_LANDSCAPE_USABLE_HEIGHT_PX - 30;
   const usedHeight = chunk.reduce((sum,x)=>sum+estimateRouteRowHeight(x, rowHeight), 0);
   const remaining = usableHeight - overhead - usedHeight;
   return remaining>0 ? Math.floor(remaining/blankRowHeight) : 0;
