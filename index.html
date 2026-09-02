@@ -155,6 +155,7 @@ table.datatable th{
 }
 table.datatable td{padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:middle;}
 table.datatable tr:hover td{background:#FAF6EE;}
+table.datatable tr.search-match-row td{background:var(--clay-soft); box-shadow:inset 0 0 0 2px var(--clay);}
 .table-wrap{max-height:70vh; overflow:auto; border-radius:var(--radius); border:1px solid var(--line);}
 
 .badge{
@@ -4574,6 +4575,14 @@ function renderDrivers(root){
     </div>
 
     <div class="card card-pad" style="margin-bottom:16px;">
+      <div class="section-label" style="margin-top:0;">搜尋會員，看今天是哪位司機接送</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <input type="text" id="driverSearchInput" placeholder="輸入會員編號或姓名…" style="flex:1; min-width:140px;" onkeydown="if(event.key==='Enter') searchDriverForClient();">
+        <button class="btn sm" onclick="searchDriverForClient()">🔍 搜尋</button>
+      </div>
+    </div>
+
+    <div class="card card-pad" style="margin-bottom:16px;">
       <div class="section-label" style="margin-top:0;">依編號新增到今日路線</div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
         <input type="text" id="routeAddIdInput" placeholder="輸入會員編號，例如 52" style="flex:1; min-width:140px;" inputmode="numeric" onkeydown="if(event.key==='Enter') addToDriverRouteById();">
@@ -4611,7 +4620,7 @@ function renderDrivers(root){
           <table class="datatable">
             <thead><tr><th style="width:26px; border-right:2px solid var(--teal); color:var(--ink-soft);">#</th><th>編號</th><th>姓名</th><th>地址</th><th>電話</th><th></th></tr></thead>
             <tbody>
-              ${(grouped[d]||[]).map((x,i)=>`<tr>
+              ${(grouped[d]||[]).map((x,i)=>`<tr data-client-id="${escapeHtml(x.client.id)}">
                 <td style="border-right:2px solid var(--teal); color:var(--ink-soft);">${i+1}</td>
                 <td class="mono" style="color:var(--ink-soft);">${escapeHtml(x.client.id)}</td>
                 <td><b>${escapeHtml(x.client.enName)}</b><br><span style="color:var(--ink-soft);font-size:11.5px;">${escapeHtml(x.client.cnName)}</span>${x.returnOnly?' <span class="badge amber" style="font-size:10px;" title="平常接送司機是別人，只有週五回程是這位司機開">週五回程</span>':''}</td>
@@ -4632,6 +4641,36 @@ function renderDrivers(root){
 function setDriverFilter(d){ driverFilter=d; render(); }
 function setDriverDate(offsetDays){ driverDate = offsetDays===1 ? nextBusinessDay(todayStr()) : addDays(todayStr(), offsetDays); render(); }
 function printOneDriver(driverName){ buildAndOpenDriverRoutes([driverName]); }
+// Find which driver is actually taking this member today (following any
+// Friday-return / adjust overrides already baked into getDriverGroupedForDate,
+// not just their normal on-file driver), switch the filter to that driver's
+// card, and scroll straight to their row — instead of making staff click
+// through every driver chip looking for one person.
+function searchDriverForClient(){
+  const input = document.getElementById('driverSearchInput');
+  if(!input) return;
+  const q = input.value.trim().toLowerCase();
+  if(!q){ showToast('請先輸入會員編號或姓名'); return; }
+  const grouped = getDriverGroupedForDate(driverDate);
+  let foundDriver = null, foundClientId = null;
+  for(const d of Object.keys(grouped)){
+    const match = (grouped[d]||[]).find(x=>{
+      const hay = (x.client.id+' '+x.client.enName+' '+x.client.cnName).toLowerCase();
+      return hay.includes(q);
+    });
+    if(match){ foundDriver = d; foundClientId = match.client.id; break; }
+  }
+  if(!foundDriver){ showToast(`今天的司機路線裡找不到「${input.value.trim()}」`); return; }
+  driverFilter = foundDriver;
+  render();
+  setTimeout(()=>{
+    const row = document.querySelector(`tr[data-client-id="${CSS.escape(foundClientId)}"]`);
+    if(row){
+      row.classList.add('search-match-row');
+      row.scrollIntoView({behavior:'smooth', block:'center'});
+    }
+  }, 30);
+}
 
 // Same "Gentle Heart Daycare Center" route-page layout as the printed
 // sheet (see buildDriverPageHtml/ROUTE_PAGE_STYLE) — a real bordered
