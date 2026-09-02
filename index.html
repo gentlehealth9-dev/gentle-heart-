@@ -3250,6 +3250,15 @@ const PRINT_SAFE_INSET_PX = 8; // ~2mm
 const A4_PORTRAIT_USABLE_WIDTH_PX = (210-20)*96/25.4 - PRINT_SAFE_INSET_PX*2;   // A4, 10mm margins each side
 const A4_PORTRAIT_USABLE_HEIGHT_PX = (297-20)*96/25.4 - PRINT_SAFE_INSET_PX*2;
 
+// Landscape print-outs (route sheet, seating chart) have repeatedly come back
+// from real printers with the right edge trimmed off, even though the PDF
+// export and @page CSS both check out fine — almost certainly the printer
+// hardware's own unprintable margin, which is often worse on the trailing
+// edge in landscape feed. Give landscape extra right-side buffer; portrait
+// docs haven't shown this and keep the plain 10mm.
+const LANDSCAPE_PRINT_MARGIN_RIGHT_MM = 18;
+const LANDSCAPE_PRINT_MARGIN = `10mm ${LANDSCAPE_PRINT_MARGIN_RIGHT_MM}mm 10mm 10mm`;
+
 // Hardcoding a rows-per-page constant from an isolated measurement doesn't
 // hold up: the actual print rendering always goes through the in-page
 // preview pane (window.open() is blocked in this sandboxed environment),
@@ -3573,7 +3582,7 @@ function buildPrintDocHtml(printDoc, hint){
   table.sig-table th,table.sig-table td{border:1px solid #999; padding:6px 8px; text-align:center;}
   table.sig-table th{background:#F0EBDD;}
   table.sig-table tr{page-break-inside:avoid; break-inside:avoid;}
-  @page{ size: A4 ${printDoc.orientation||'landscape'}; margin: 10mm; }
+  @page{ size: A4 ${printDoc.orientation||'landscape'}; margin: ${printDoc.orientation==='portrait' ? '10mm' : LANDSCAPE_PRINT_MARGIN}; }
   @media print{
     body{display:block;}
     .print-page-inner{max-width:none; margin:0 auto; padding:8px;}
@@ -4834,7 +4843,7 @@ const DRIVER_ROUTE_TRIP_LABELS = ['第一趟','第二趟','第三趟','第四趟
 // estimate, scaled off the live-measured baseline) — a small unfilled gap
 // at the very bottom is an acceptable outcome; spare rows overflowing
 // onto a wasted extra page is not.
-const A4_LANDSCAPE_USABLE_WIDTH_PX = (297-20)*96/25.4 - PRINT_SAFE_INSET_PX*2;
+const A4_LANDSCAPE_USABLE_WIDTH_PX = (297-10-LANDSCAPE_PRINT_MARGIN_RIGHT_MM)*96/25.4 - PRINT_SAFE_INSET_PX*2;
 const A4_LANDSCAPE_USABLE_HEIGHT_PX = (210-20)*96/25.4 - PRINT_SAFE_INSET_PX*2;
 function measureRouteMetrics(){
   const container = document.createElement('div');
