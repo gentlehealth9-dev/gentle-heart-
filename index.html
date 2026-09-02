@@ -3251,13 +3251,14 @@ const A4_PORTRAIT_USABLE_WIDTH_PX = (210-20)*96/25.4 - PRINT_SAFE_INSET_PX*2;   
 const A4_PORTRAIT_USABLE_HEIGHT_PX = (297-20)*96/25.4 - PRINT_SAFE_INSET_PX*2;
 
 // Landscape print-outs (route sheet, seating chart) have repeatedly come back
-// from real printers with the right edge trimmed off, even though the PDF
-// export and @page CSS both check out fine — almost certainly the printer
-// hardware's own unprintable margin, which is often worse on the trailing
-// edge in landscape feed. Give landscape extra right-side buffer; portrait
-// docs haven't shown this and keep the plain 10mm.
-const LANDSCAPE_PRINT_MARGIN_RIGHT_MM = 18;
-const LANDSCAPE_PRINT_MARGIN = `10mm ${LANDSCAPE_PRINT_MARGIN_RIGHT_MM}mm 10mm 10mm`;
+// from real printers with an edge trimmed off, even though the PDF export
+// and @page CSS both check out fine — almost certainly the printer
+// hardware's own unprintable margin. An asymmetric right-only buffer just
+// moved the clipping to the left edge instead (whatever is trimming it
+// doesn't respect an uneven left/right split), so widen both sides evenly.
+// Portrait docs haven't shown this and keep the plain 10mm.
+const LANDSCAPE_PRINT_MARGIN_SIDE_MM = 18;
+const LANDSCAPE_PRINT_MARGIN = `10mm ${LANDSCAPE_PRINT_MARGIN_SIDE_MM}mm`;
 
 // Hardcoding a rows-per-page constant from an isolated measurement doesn't
 // hold up: the actual print rendering always goes through the in-page
@@ -4829,7 +4830,7 @@ const DRIVER_ROUTE_TRIP_LABELS = ['第一趟','第二趟','第三趟','第四趟
 // estimate, scaled off the live-measured baseline) — a small unfilled gap
 // at the very bottom is an acceptable outcome; spare rows overflowing
 // onto a wasted extra page is not.
-const A4_LANDSCAPE_USABLE_WIDTH_PX = (297-10-LANDSCAPE_PRINT_MARGIN_RIGHT_MM)*96/25.4 - PRINT_SAFE_INSET_PX*2;
+const A4_LANDSCAPE_USABLE_WIDTH_PX = (297-LANDSCAPE_PRINT_MARGIN_SIDE_MM*2)*96/25.4 - PRINT_SAFE_INSET_PX*2;
 const A4_LANDSCAPE_USABLE_HEIGHT_PX = (210-20)*96/25.4 - PRINT_SAFE_INSET_PX*2;
 function measureRouteMetrics(){
   const container = document.createElement('div');
