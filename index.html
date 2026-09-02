@@ -5421,12 +5421,12 @@ const SEATING_PRINT_STYLE = `
   .seating-print-page{display:flex; flex-direction:column; gap:10px;}
   .seating-print-page .print-title, .seating-print-page .print-sub{margin-bottom:0; flex:0 0 auto;}
   .seating-print-grid{display:grid; grid-template-columns:repeat(8,1fr); grid-auto-rows:1fr; gap:8px; flex:1 1 auto; min-height:0;}
-  .seating-print-grid .seat-table{background:#fff; border:1px solid #999; border-radius:6px; padding:6px; display:flex; flex-direction:column; gap:4px; min-height:0;}
-  .seating-print-grid .table-label{text-align:center; font-size:11px; font-weight:700; color:#555; flex:0 0 auto;}
+  .seating-print-grid .seat-table{background:#fff; border:1.5px solid #777; border-radius:6px; padding:6px; display:flex; flex-direction:column; gap:4px; min-height:0;}
+  .seating-print-grid .table-label{text-align:center; font-size:14px; font-weight:800; color:#2B2620; flex:0 0 auto;}
   .seating-print-grid .seat-row{display:flex; gap:3px; flex:1 1 auto; min-height:0;}
-  .seating-print-grid .seat-slot{flex:1; min-width:0; height:100%; border:1px solid #ccc; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:700; overflow:hidden; white-space:nowrap;}
-  .seating-print-grid .seat-slot.occupied{border-color:#2E4E33; background:#E4EEE4; color:#2E4E33;}
-  .seating-print-grid .seat-slot.occupied.visitor{border-color:#E3C9A8; background:#F5E8CE; color:#6B4E14;}
+  .seating-print-grid .seat-slot{flex:1; min-width:0; height:100%; border:1.3px solid #aaa; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:700; overflow:hidden; white-space:nowrap;}
+  .seating-print-grid .seat-slot.occupied{border-color:#2E4E33; border-width:1.6px; background:#E4EEE4; color:#2E4E33;}
+  .seating-print-grid .seat-slot.occupied.visitor{border-color:#B8822E; border-width:1.6px; background:#F5E8CE; color:#6B4E14;}
   .seating-print-grid .seat-stage{background:repeating-linear-gradient(135deg,#ddd,#ddd 6px,transparent 6px,transparent 12px); border:1px dashed #999; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:#666; min-height:0;}
   .seating-print-unassigned{font-size:12.5px; color:#6B4E14; background:#F5E8CE; border:1px solid #E3CD9A; border-radius:8px; padding:10px 14px; flex:0 0 auto;}
 `;
