@@ -3951,12 +3951,14 @@ function renderAdmissionPacket(root){
     </div>
     <div class="card card-pad">
       <div style="font-size:13.5px; color:var(--ink-soft); line-height:1.7;">
-        這是完整的新會員入會申請文件包，共五頁，內容包含：<br>
+        這是完整的新會員入會申請文件包，共七頁，內容包含：<br>
         1️⃣ 會員基本資料、白卡及醫療保險、家庭醫生資料<br>
         2️⃣ 緊急聯絡人、交通接送、希望參加天數、飲食特別需要、介紹來源、入會同意書<br>
         3️⃣ 會員/代表簽字、經辦人員確認<br>
         4️⃣ 新會員入會及評估流程追蹤表（22項工作項目逐項簽字）<br>
-        5️⃣ 最終審核及更正記錄、HIPAA 聲明<br><br>
+        5️⃣ 最終審核及更正記錄、HIPAA 聲明<br>
+        6️⃣ Intake Information（Gentle Heart ADHC/CBAS 官方表格）<br>
+        7️⃣ Intake Evaluation（Gentle Heart ADHC/CBAS 官方表格，ADL/IADL 評估）<br><br>
         按上方「🖨 列印入會申請表」即可產生空白表格列印，供新會員/家屬填寫及各經辦人員逐項簽字使用。
       </div>
     </div>
@@ -4155,6 +4157,92 @@ function printAdmissionPacket(){
 
       <p style="font-size:10px; color:#666; margin:28px 0 0; border-top:1px solid #ccc; padding-top:8px;">說明：本文件包用於內部作業流程及責任追蹤，並不能取代法律、法規或合約所要求的任何其他 HIPAA、病歷授權、醫療保險或特定服務的授權文件。</p>
       <p style="font-size:9px; font-style:italic; color:#888; margin:2px 0 0;">Note: This packet supports internal workflow and accountability. It does not replace any separate HIPAA, medical-record release, health-plan, or service-specific authorization required by law, regulation, or contract.</p>
+      ${footerNote}
+    </div>
+
+    <div style="${pageBreakStyle}">
+      <div style="text-align:center; margin-bottom:12px;">
+        <div style="font-size:13px; font-weight:700;">GENTLE HEART ADHC/CBAS</div>
+        <div style="font-size:19px; font-weight:700; margin-top:2px;">INTAKE INFORMATION</div>
+      </div>
+      <p style="font-size:11px; font-style:italic; margin:0 0 10px;">*Please place the completed intake form in the front section of the chart.</p>
+      ${table([
+        row('Name (Last/First):',''),
+        row('MR#:',''),
+        row('Tel #:',''),
+        row('DOB / Age / Gender:','DOB：＿＿＿＿＿＿＿＿　Age：＿＿＿　Gender：☐ Male　☐ Female'),
+        row('Address:',''),
+        row('City / State / Zip:',''),
+        row('Marital Status:','☐ Married　☐ Widowed　☐ Separated　☐ Single　☐ Divorced　☐ Other：＿＿＿＿＿＿'),
+        row('Ethnic Background:','☐ White　☐ Hispanic　☐ Asian　☐ African-American　☐ Other：＿＿＿＿＿＿'),
+        row('Languages:','☐ Mandarin　☐ Cantonese　☐ Shanghainese　☐ Other：＿＿＿＿＿＿'),
+        row('Living Arrangement:','☐ Lives alone　☐ Lives w/family/Spouse　☐ Lives in B+C　☐ Lives in ICF/DD-H<br>☐ Lives alone but has intermittent care giver　☐ Other：＿＿＿＿＿＿',{tall:true}),
+        row('Transportation:','☐ Contracted transportation　☐ Family provides　☐ Public transportation<br>☐ Drives own car　☐ ADHC center van　☐ Other：＿＿＿＿＿＿',{tall:true}),
+        row('Primary Physician:',''),
+        row('Physician Tel# / Fax#:','Tel#：＿＿＿＿＿＿＿＿＿＿　Fax#：＿＿＿＿＿＿＿＿＿＿'),
+        row('Physician Address:',''),
+        row('Physician City, State, ZIP:',''),
+        row('Emergency Contact / Relationship:',''),
+        row('Emergency Contact Tel #:',''),
+        row('Pharmacy:',''),
+        row('Pharmacy Tel #:',''),
+        row('Medi-Cal#:','No#：＿＿＿＿＿＿＿＿＿＿＿＿　Issue Date：＿＿＿＿＿＿＿＿'),
+        row('Health Insurance:','☐ LA Care　☐ Health Net　☐ Molina　☐ IEHP　☐ Anthem　☐ Other<br>Insurance effective date：＿＿＿＿＿＿＿＿',{tall:true}),
+        row('Insurance ID#:',''),
+        row('SSN#:',''),
+        row('Medicare#:',''),
+        row('Name of Referral Source / Relationship:',''),
+        row('Referral Source Tel#:',''),
+        row('Reason for Referral:','☐ Medical Problems　☐ Limited Access To Community<br>☐ Insufficient Support System　☐ Functional Problems',{tall:true}),
+        row('Attended Beach City CBAS or Other ADHC center before?','☐ Yes　☐ No　　If Yes, When：＿＿＿＿＿＿＿＿'),
+        row('Center Name / Discharge Reason:','Center Name：＿＿＿＿＿＿＿＿＿＿　Discharge Reason：＿＿＿＿＿＿＿＿＿＿'),
+        row('Center Staff Printed Name / Title:',''),
+        row('Signature / Date:','Signature：＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿　Date：＿＿＿＿＿＿＿＿'),
+      ])}
+      ${footerNote}
+    </div>
+
+    <div style="${pageBreakStyle}">
+      <div style="text-align:center; margin-bottom:12px;">
+        <div style="font-size:13px; font-weight:700;">GENTLE HEART ADHC/CBAS</div>
+        <div style="font-size:19px; font-weight:700; margin-top:2px;">INTAKE EVALUATION</div>
+      </div>
+      ${table([
+        row('Name (Last/First):',''),
+        row('MR#:',''),
+        row('Living Arrangement:','☐ Lives alone　☐ Lives w/family/Spouse　☐ Lives in B+C　☐ Lives in ICF/DD-H<br>☐ Lives alone but has intermittent care giver　☐ Other：＿＿＿＿＿＿',{tall:true}),
+        row('Medical Diagnoses:','',{tall:true}),
+      ])}
+      <div style="${sectionStyle}">ADL</div>
+      ${table([
+        row('Bathing:','☐ Ind　☐ Super　☐ Assist　☐ Dep'),
+        row('Dressing:','☐ Ind　☐ Super　☐ Assist　☐ Dep'),
+        row('Self-Feeding:','☐ Ind　☐ Super　☐ Assist　☐ Dep'),
+        row('Toileting:','☐ Ind　☐ Super　☐ Assist　☐ Dep'),
+        row('Ambulation:','☐ Ind　☐ Super　☐ Assist　☐ Dep'),
+        row('Transferring:','☐ Ind　☐ Super　☐ Assist　☐ Dep'),
+      ])}
+      <div style="${sectionStyle}">IADL</div>
+      ${table([
+        row('Accessing Resources:','☐ Ind　☐ Super　☐ Assist　☐ Dep'),
+        row('Hygiene:','☐ Ind　☐ Super　☐ Assist　☐ Dep'),
+        row('Meal Preparation:','☐ Ind　☐ Super　☐ Assist　☐ Dep'),
+        row('Medication Mgmt:','☐ Ind　☐ Super　☐ Assist　☐ Dep'),
+        row('Money Mgmt:','☐ Ind　☐ Super　☐ Assist　☐ Dep'),
+        row('Transportation:','☐ Ind　☐ Super　☐ Assist　☐ Dep'),
+        row('Recent ER or Hospitalization:',''),
+        row('Recent Falls:',''),
+        row('IHSS Hrs:','＿＿＿＿＿＿＿＿ hr/Mo'),
+        row('Transportation Assistance:','☐ Needed　☐ Not Needed　☐ Family Provide　☐ Self Driver　☐ Other：＿＿＿＿＿＿'),
+        row('Days of ADHC service requested:','☐ 1x/wk　☐ 2x/wk　☐ 3x/wk　☐ 4x/wk　☐ 5x/wk'),
+        row('How did you hear or know about Gentle Heart?','☐ Friend　☐ Family　☐ Center Vehicle　☐ Advertisement　☐ Other：＿＿＿＿＿＿'),
+        row('First Contact Staff:',''),
+        row('Intake Processed by:',''),
+      ])}
+      ${table([
+        row('Center Staff Printed Name / Title:',''),
+        row('Signature / Date:','Signature：＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿　Date：＿＿＿＿＿＿＿＿'),
+      ])}
       ${footerNote}
     </div>
   `;
