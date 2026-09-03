@@ -3780,81 +3780,9 @@ function sortWithCouplesGrouped(schedArr){
     return idCompare(a.client.id, b.client.id);
   });
 }
-// The browser's 'zh' collation sorts a Traditional-character name as
-// strictly "greater than" every Simplified name with the same pinyin
-// (e.g. 陳 always sorts after the whole 陈-cluster, not alongside it) —
-// this roster has both scripts mixed in (members mostly Simplified,
-// some visitors typed in Traditional), which was throwing the printed
-// sign-in sheet's name order visibly out of alphabetical sequence.
-// Normalizing to Simplified before comparing (display text is untouched)
-// fixes that. Only covers the characters that actually show up in this
-// roster's names/relationships, plus the common surnames most likely to
-// appear in future entries.
-const TRAD_TO_SIMP_CHARS = {
-  '陳':'陈','張':'张','劉':'刘','楊':'杨','黃':'黄','趙':'赵','陸':'陆',
-  '賀':'贺','師':'师','蕭':'萧','葉':'叶','鄭':'郑','謝':'谢','韓':'韩',
-  '馮':'冯','蔣':'蒋','湯':'汤','錢':'钱','顧':'顾','呂':'吕','蘇':'苏',
-  '盧':'卢','龍':'龙','關':'关','閻':'阎','鄧':'邓','羅':'罗','顏':'颜',
-  '竇':'窦','譚':'谭','賴':'赖','龔':'龚','韋':'韦','偉':'伟','東':'东',
-  '榮':'荣','華':'华','蘭':'兰','靜':'静','軍':'军','國':'国','學':'学',
-  '義':'义','愛':'爱','萬':'万','鳳':'凤','麗':'丽','紅':'红','維':'维',
-  '慶':'庆','會':'会','來':'来','傑':'杰',
-};
-function simplifyForSort(s){
-  return (s||'').split('').map(ch=>TRAD_TO_SIMP_CHARS[ch]||ch).join('');
-}
-// Same couple-grouping logic as sortWithCouplesGrouped, but ordered by
-// Chinese name (browser's built-in pinyin collation) instead of by ID
-// number — staff report members spend a long time hunting for their own
-// row on the printed sign-in sheet, because it's sorted by an ID number
-// they don't have memorized. Alphabetical-by-name is what people actually
-// scan for. Kept as a separate function (not a change to
-// sortWithCouplesGrouped itself) since that one is also used for the
-// driver/kitchen/weekly views, where ID order still matches how staff
-// cross-reference other paperwork.
-function sortWithCouplesGroupedByName(schedArr){
-  const scheduledIds = new Set(schedArr.map(x=>x.client.id));
-  const byId = {};
-  schedArr.forEach(x=>{ byId[x.client.id] = x.client; });
-  function explicitPartnerId(client){
-    const rel = client.relationship || '';
-    if(!/夫妻/.test(rel)) return null;
-    const selfEsc = String(client.id).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-    let m = rel.match(new RegExp(selfEsc+'\\/([^\\s·]+?)夫妻'));
-    if(m) return m[1];
-    m = rel.match(new RegExp('([^\\s·]+?)\\/'+selfEsc+'夫妻'));
-    if(m) return m[1];
-    return null;
-  }
-  const relTextGroups = {};
-  schedArr.forEach(x=>{
-    const rel = (x.client.relationship||'').trim();
-    if(rel && /夫妻/.test(rel) && !explicitPartnerId(x.client)){
-      (relTextGroups[rel] = relTextGroups[rel]||[]).push(x.client.id);
-    }
-  });
-  const nameOf = c => simplifyForSort((c && (c.cnName || c.enName)) || '');
-  const groupMinName = {};
-  schedArr.forEach(x=>{
-    let ids = [x.client.id];
-    const partnerId = explicitPartnerId(x.client);
-    if(partnerId && scheduledIds.has(partnerId)) ids.push(partnerId);
-    const rel = (x.client.relationship||'').trim();
-    if(rel && relTextGroups[rel] && relTextGroups[rel].length>1) ids = relTextGroups[rel];
-    groupMinName[x.client.id] = ids
-      .map(id=>nameOf(byId[id]))
-      .reduce((min,n)=> n.localeCompare(min,'zh')<0 ? n : min, nameOf(x.client));
-  });
-  return schedArr.slice().sort((a,b)=>{
-    const gc = groupMinName[a.client.id].localeCompare(groupMinName[b.client.id], 'zh');
-    if(gc !== 0) return gc;
-    return nameOf(a.client).localeCompare(nameOf(b.client), 'zh');
-  });
-}
-
 function printSignIn(){
  try{
-  const sched = sortWithCouplesGroupedByName(
+  const sched = sortWithCouplesGrouped(
     getScheduledForDate(scheduleDate).filter(x=>x.client.transportMode==='company')
   );
   const titleBoxHtml = `<div style="background:#EDEAE1; color:#2B2620; padding:16px 20px; border-radius:8px; text-align:center; margin-bottom:16px;">
@@ -3915,7 +3843,7 @@ function printSignIn(){
 
 function printUberWaiver(){
  try{
-  const sched = sortWithCouplesGroupedByName(
+  const sched = sortWithCouplesGrouped(
     getScheduledForDate(scheduleDate).filter(x=>x.client.transportMode==='uber_self')
   );
   // Same table format as the Company Pickup sign-in sheet (printSignIn) —
