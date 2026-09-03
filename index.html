@@ -1125,6 +1125,24 @@ function removeException(dateStr, excId){
   if(EXCEPTIONS[dateStr].length===0) delete EXCEPTIONS[dateStr];
 }
 
+// Visitors who visited a while ago but still haven't been followed up on —
+// no doctor-eval fax back yet, and it's been long enough since their most
+// recent visit that they're at risk of falling through the cracks.
+function getVisitorsNeedingFollowUp(thresholdDays){
+  thresholdDays = thresholdDays || 7;
+  const today = parseDate(todayStr());
+  return CLIENTS
+    .filter(c=>c.visitor && c.status!=='discontinued' && !c.doctorEvalReturned)
+    .map(c=>{
+      const lastVisit = getClientHistory(c.id).find(e=>e.type==='extra');
+      if(!lastVisit) return null;
+      const daysSince = Math.round((today - parseDate(lastVisit.date)) / 86400000);
+      if(daysSince < thresholdDays) return null;
+      return {client:c, lastVisitDate:lastVisit.date, daysSince};
+    })
+    .filter(Boolean)
+    .sort((a,b)=>b.daysSince-a.daysSince);
+}
 function getClientHistory(clientId){
   const rows = [];
   Object.keys(EXCEPTIONS).sort().forEach(date=>{
@@ -1254,6 +1272,7 @@ function renderDashboard(root){
   // all (not date-specific — a data-completeness gap, same one flagged earlier
   // when checking "未設定" members by hand).
   const unsetTransport = CLIENTS.filter(c=>c.status==='active' && !c.visitor && !c.ers && !c.transportMode);
+  const followUpVisitors = getVisitorsNeedingFollowUp(7);
 
   root.innerHTML = `
     <div class="topbar">
@@ -1315,7 +1334,8 @@ function renderDashboard(root){
           return `<div class="hist-item"><span>${clientLabel(c)} 請假${e.note? '：'+escapeHtml(e.note):''}</span><span class="meta">${wd?DAY_LABEL_FULL[wd]:''}</span></div>`;
         }).join(''):''}
         ${overQuota.length? overQuota.map(o=>`<div class="hist-item"><span>${clientLabel(o.c)} 本週已到 <b>${o.u.count}</b> 天，超過核准 <b>${o.c.insuranceDaysPerWeek}</b> 天</span><span class="meta note-flag">請確認保險</span></div>`).join(''):''}
-        ${(!noDriverToday.length && !pending.length && !unsetTransport.length && !leaveToday.length && !overQuota.length) ? '<div style="color:var(--ink-soft);">目前沒有需要留意的事項。</div>':''}
+        ${followUpVisitors.length? followUpVisitors.map(f=>`<div class="hist-item"><span>${clientLabel(f.client)} <b>${f.daysSince}</b> 天前來訪（${fmtDateHuman(f.lastVisitDate)}），還沒收到醫生評估回傳</span><span class="meta"><a href="#" onclick="openMemberModal('${escapeHtml(f.client.id)}');return false;" style="color:var(--teal);">前往跟進 →</a></span></div>`).join(''):''}
+        ${(!noDriverToday.length && !pending.length && !unsetTransport.length && !leaveToday.length && !overQuota.length && !followUpVisitors.length) ? '<div style="color:var(--ink-soft);">目前沒有需要留意的事項。</div>':''}
       </div>
     </div>
 
