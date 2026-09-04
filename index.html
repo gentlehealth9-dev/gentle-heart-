@@ -3876,7 +3876,7 @@ function printUberWaiver(){
       <td class="id-cell" title="${escapeHtml(x.client.id)}">${escapeHtml(x.client.id)}</td>
       <td class="en-cell" title="${escapeHtml(x.client.enName)}">${escapeHtml(x.client.enName)}</td>
       <td class="cn-cell" title="${escapeHtml(x.client.cnName)}">${escapeHtml(x.client.cnName)}</td>
-      <td class="mode-cell">${x.client.subMode==='Uber' ? 'Uber' : ''}</td>
+      <td class="mode-cell">${escapeHtml(x.client.subMode||'')}</td>
       <td></td><td></td><td></td>
     </tr>`;
   const sampleRowHtml = rowHtml(sched[0] || {client:{id:'000', enName:'Sample Name', cnName:'測試姓名', subMode:'Uber'}});
@@ -3931,12 +3931,12 @@ function printNurseStation(){
     .mode-cell{white-space:nowrap; width:70px;}
     table.sig-table thead th{white-space:nowrap;}
     table.sig-table{font-size:20px;}</style>`;
-  const theadHtml = `<thead><tr><th class="id-cell">ID</th><th>English Name</th><th>Chinese Name</th><th class="mode-cell">Uber</th><th style="width:32%;">BP</th></tr></thead>`;
+  const theadHtml = `<thead><tr><th class="id-cell">ID</th><th>English Name</th><th>Chinese Name</th><th class="mode-cell">Mode</th><th style="width:32%;">BP</th></tr></thead>`;
   const rowHtml = x => `<tr>
       <td class="id-cell" title="${escapeHtml(x.client.id)}">${escapeHtml(x.client.id)}</td>
       <td class="en-cell" title="${escapeHtml(x.client.enName)}">${escapeHtml(x.client.enName)}</td>
       <td class="cn-cell" title="${escapeHtml(x.client.cnName)}">${escapeHtml(x.client.cnName)}</td>
-      <td class="mode-cell">${x.client.subMode==='Uber' ? 'Uber' : ''}</td>
+      <td class="mode-cell">${escapeHtml(x.client.subMode||'')}</td>
       <td></td>
     </tr>`;
   const sampleRowHtml = rowHtml(sched[0] || {client:{id:'000', enName:'Sample Name', cnName:'測試姓名', subMode:'Uber'}});
