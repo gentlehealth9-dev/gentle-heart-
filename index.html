@@ -3920,20 +3920,26 @@ function printNurseStation(){
   // See printSignIn's comment: fix the ID column to a strict width and
   // clip (rather than wrap) long IDs so every row stays exactly one line
   // tall — the fill-to-bottom math below assumes uniform row height.
+  // Per nurse station request: no Time In/Out (replaced by the same
+  // Uber/blank mode indicator as the self-drive/Uber sign-in sheet), and
+  // Signature replaced by a wide BP column since nurses record both a
+  // reading and the time it was taken there.
   const idColStyleTag = `<style>
-    .id-cell{white-space:nowrap; max-width:90px; overflow:hidden; text-overflow:ellipsis; font-size:15px;}
-    .en-cell{white-space:nowrap; max-width:170px; overflow:hidden; text-overflow:ellipsis;}
-    .cn-cell{white-space:nowrap; max-width:120px; overflow:hidden; text-overflow:ellipsis;}
+    .id-cell{white-space:nowrap; max-width:80px; overflow:hidden; text-overflow:ellipsis; font-size:15px;}
+    .en-cell{white-space:nowrap; max-width:150px; overflow:hidden; text-overflow:ellipsis;}
+    .cn-cell{white-space:nowrap; max-width:110px; overflow:hidden; text-overflow:ellipsis;}
+    .mode-cell{white-space:nowrap; width:70px;}
     table.sig-table thead th{white-space:nowrap;}
     table.sig-table{font-size:20px;}</style>`;
-  const theadHtml = `<thead><tr><th class="id-cell">ID</th><th>English Name</th><th>Chinese Name</th><th>Time In</th><th>Time Out</th><th style="width:22%;">Signature</th></tr></thead>`;
+  const theadHtml = `<thead><tr><th class="id-cell">ID</th><th>English Name</th><th>Chinese Name</th><th class="mode-cell">Uber</th><th style="width:32%;">BP</th></tr></thead>`;
   const rowHtml = x => `<tr>
       <td class="id-cell" title="${escapeHtml(x.client.id)}">${escapeHtml(x.client.id)}</td>
       <td class="en-cell" title="${escapeHtml(x.client.enName)}">${escapeHtml(x.client.enName)}</td>
       <td class="cn-cell" title="${escapeHtml(x.client.cnName)}">${escapeHtml(x.client.cnName)}</td>
-      <td></td><td></td><td></td>
+      <td class="mode-cell">${x.client.subMode==='Uber' ? 'Uber' : ''}</td>
+      <td></td>
     </tr>`;
-  const sampleRowHtml = rowHtml(sched[0] || {client:{id:'000', enName:'Sample Name', cnName:'測試姓名'}});
+  const sampleRowHtml = rowHtml(sched[0] || {client:{id:'000', enName:'Sample Name', cnName:'測試姓名', subMode:'Uber'}});
   const ROWS_PER_PAGE = computeRowsPerPage({
     titleBoxHtml: idColStyleTag+titleBoxHtml, theadHtml, tableClass:'sig-table', rowHtml: sampleRowHtml,
   });
@@ -3941,10 +3947,10 @@ function printNurseStation(){
     titleBoxHtml: idColStyleTag+contTitleBoxHtml, theadHtml, tableClass:'sig-table', rowHtml: sampleRowHtml,
   });
   const body = buildFillPagedSheet({
-    titleBoxHtml: idColStyleTag+titleBoxHtml, contTitleBoxHtml, theadHtml, colCount:6,
+    titleBoxHtml: idColStyleTag+titleBoxHtml, contTitleBoxHtml, theadHtml, colCount:5,
     rowsPerPage:ROWS_PER_PAGE, rowsPerPageCont:ROWS_PER_PAGE_CONT,
     realRows: sched, rowHtml,
-    noticeHtml: `<tr><td colspan="6" style="text-align:center;color:#777;">No participants today</td></tr>`,
+    noticeHtml: `<tr><td colspan="5" style="text-align:center;color:#777;">No participants today</td></tr>`,
   });
   const html = `${SIGN_IN_FONT_TAG}${body}`;
   openAndPrintDoc(`護士站列印表_${scheduleDate}`, html, 'portrait');
