@@ -4142,10 +4142,15 @@ function renderAdmissionPacket(root){
       <div style="font-size:12px; color:var(--ink-soft); margin-bottom:8px;">Intake Information 跟 Intake Evaluation 是同一份官方表格的兩頁，會一起列印成一份文件。</div>
       <button class="btn ghost" onclick="printIntakeForms()">🖨 列印 Intake Information + Evaluation</button>
     </div>
-    <div class="card card-pad">
+    <div class="card card-pad" style="margin-bottom:14px;">
       <div class="section-label" style="margin-bottom:8px;">應徵申請表（員工招募用，共三頁）</div>
       <div style="font-size:12px; color:var(--ink-soft); margin-bottom:8px;">Employment Application — 空白中英對照版，給應徵者現場填寫。</div>
       <button class="btn ghost" onclick="printEmploymentApplication()">🖨 列印應徵申請表</button>
+    </div>
+    <div class="card card-pad">
+      <div class="section-label" style="margin-bottom:8px;">入會證件須知（給新會員／家屬參考）</div>
+      <div style="font-size:12px; color:var(--ink-soft); margin-bottom:8px;">一頁式中英對照說明，列出入會需攜帶的三種證件（白卡、紅藍卡、身分證件），可列印給新會員家屬帶回去參考。</div>
+      <button class="btn ghost" onclick="printIdChecklist()">🖨 列印入會證件須知</button>
     </div>
   `;
 }
@@ -4539,6 +4544,362 @@ function openEmbeddedPdfInline(filename, dataUri){
 }
 function printEmploymentApplication(){
   openEmbeddedPdf(EMPLOYMENT_APPLICATION_PDF_B64, '應徵申請表_Employment_Application');
+}
+
+// "入會證件須知" (ID Checklist) reference handout — a standalone styled
+// document, not one of the internal app screens, so it carries its own
+// <head> (fonts + a full CSS system with its own :root token names that
+// would otherwise collide with the app shell's identically-named tokens).
+// Always rendered as a fully self-contained document — via document.write
+// in a real new tab, or via an <iframe srcdoc> when embedded inline — so
+// its CSS never leaks into (or gets clobbered by) the surrounding app.
+function buildIdChecklistHtml(){
+  return `<!DOCTYPE html>
+<html lang="zh-Hant"><head><meta charset="UTF-8"><title>入會證件須知</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F6F2EA;
+  --panel:#FFFFFF;
+  --ink:#2B2620;
+  --ink-soft:#6B6357;
+  --line:#E4DDCE;
+  --teal:#33565A;
+  --teal-dark:#22393C;
+  --teal-soft:#DCEAE8;
+  --clay:#BD6B4C;
+  --clay-soft:#F1DCD1;
+  --sage:#7C9A82;
+  --sage-soft:#E4EEE4;
+  --amber:#B8822E;
+  --amber-soft:#F5E8CE;
+  --red:#A1443A;
+  --red-soft:#F3DEDA;
+  --shadow:0 1px 2px rgba(43,38,32,0.06), 0 10px 26px rgba(43,38,32,0.08);
+  --on-dark:#F1ECE0;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#1B2320;
+    --panel:#232D29;
+    --ink:#EDE7DA;
+    --ink-soft:#A9A093;
+    --line:#3A433D;
+    --teal:#6FA6A0;
+    --teal-dark:#0F1614;
+    --teal-soft:#26433F;
+    --clay:#D98F6B;
+    --clay-soft:#3D2E27;
+    --sage:#8FB097;
+    --sage-soft:#243A2B;
+    --amber:#D7A85A;
+    --amber-soft:#3C3220;
+    --red:#D08279;
+    --red-soft:#3B2523;
+    --shadow:0 1px 2px rgba(0,0,0,0.3), 0 10px 26px rgba(0,0,0,0.35);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#1B2320;
+  --panel:#232D29;
+  --ink:#EDE7DA;
+  --ink-soft:#A9A093;
+  --line:#3A433D;
+  --teal:#6FA6A0;
+  --teal-dark:#0F1614;
+  --teal-soft:#26433F;
+  --clay:#D98F6B;
+  --clay-soft:#3D2E27;
+  --sage:#8FB097;
+  --sage-soft:#243A2B;
+  --amber:#D7A85A;
+  --amber-soft:#3C3220;
+  --red:#D08279;
+  --red-soft:#3B2523;
+  --shadow:0 1px 2px rgba(0,0,0,0.3), 0 10px 26px rgba(0,0,0,0.35);
+}
+
+*{box-sizing:border-box;}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:'Noto Sans TC','Helvetica Neue',Arial,sans-serif;
+  line-height:1.55;
+}
+.page{
+  max-width:900px; margin:0 auto; padding:44px 40px 56px;
+}
+.mono{font-family:'IBM Plex Mono',monospace;}
+
+/* ---- Header ---- */
+header{
+  display:flex; align-items:flex-start; justify-content:space-between; gap:24px;
+  padding-bottom:22px; margin-bottom:30px; border-bottom:3px solid var(--teal);
+}
+.brand{
+  font-family:'Noto Serif TC',serif; font-weight:700; font-size:13px;
+  letter-spacing:.08em; color:var(--teal); text-transform:uppercase;
+  margin-bottom:10px;
+}
+h1{
+  font-family:'Noto Serif TC',serif; font-weight:700;
+  font-size:34px; margin:0 0 6px; color:var(--teal); text-wrap:balance;
+}
+.sub-en{font-size:14px; font-weight:500; letter-spacing:.03em; color:var(--ink-soft);}
+.count-badge{
+  flex-shrink:0; width:78px; height:78px; border-radius:50%;
+  background:var(--teal-dark); color:var(--on-dark);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  font-family:'Noto Serif TC',serif;
+}
+.count-badge .num{font-size:30px; font-weight:700; line-height:1;}
+.count-badge .label{font-size:10px; letter-spacing:.05em; margin-top:2px;}
+
+.intro{
+  font-size:15px; color:var(--ink-soft); max-width:66ch; margin-bottom:34px;
+}
+.intro b{color:var(--ink); font-weight:700;}
+
+/* ---- Item rows ---- */
+.items{display:flex; flex-direction:column; gap:22px;}
+.item{
+  display:grid; grid-template-columns:230px 1fr; gap:26px;
+  background:var(--panel); border:1px solid var(--line); border-radius:14px;
+  box-shadow:var(--shadow); padding:22px 24px; align-items:start;
+}
+.item-num{
+  font-family:'Noto Serif TC',serif; font-weight:700; font-size:13px;
+  color:var(--panel); background:var(--accent); width:26px; height:26px;
+  border-radius:50%; display:flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+}
+.item-head{display:flex; align-items:center; gap:10px; margin-bottom:8px;}
+.item-title{font-family:'Noto Serif TC',serif; font-weight:700; font-size:20px; color:var(--ink);}
+.item-title .en{
+  display:block; font-family:'Noto Sans TC',sans-serif; font-weight:500;
+  font-size:11.5px; letter-spacing:.05em; color:var(--ink-soft); margin-top:2px;
+}
+.item-desc{font-size:13.5px; color:var(--ink-soft); margin-bottom:12px;}
+.chips{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:4px;}
+.chip{
+  font-size:11.5px; font-weight:500; padding:4px 10px; border-radius:20px;
+  background:var(--chip-bg); color:var(--chip-fg); border:1px solid var(--chip-bd);
+}
+.chip-note{font-size:11px; color:var(--ink-soft); margin-top:6px;}
+
+/* ---- Sample card mockups ---- */
+.sample{
+  width:100%; aspect-ratio:1.58/1; border-radius:11px; position:relative; overflow:hidden;
+  border:1px solid rgba(0,0,0,0.08); box-shadow:0 3px 10px rgba(43,38,32,0.14);
+  font-family:'Noto Sans TC',sans-serif;
+}
+.sample .tag{
+  position:absolute; top:8px; right:8px; font-size:8.5px; font-weight:700;
+  letter-spacing:.08em; padding:2px 7px; border-radius:20px;
+  background:rgba(255,255,255,0.85); color:#555;
+}
+.sample-line{height:6px; border-radius:3px; background:currentColor; opacity:.28;}
+.sample-line.short{width:52%;}
+.sample-line.med{width:72%;}
+
+/* Medi-Cal mock */
+.sample.medical{background:linear-gradient(180deg,#FDFCFA 0%,#F2F6F5 100%); color:var(--teal-dark);}
+.sample.medical .band{position:absolute; left:0; right:0; top:38%; height:6px; background:linear-gradient(90deg,var(--teal) 0 70%, var(--amber) 70% 100%);}
+.sample.medical .inner{position:absolute; inset:0; padding:12px 14px;}
+.sample.medical .crest{width:22px; height:22px; border-radius:6px; background:var(--teal); margin-bottom:6px;}
+.sample.medical .fields{position:absolute; left:14px; right:14px; top:48%; display:flex; flex-direction:column; gap:6px;}
+
+/* Medicare mock */
+.sample.medicare{background:#fff;}
+.sample.medicare .topband{position:absolute; top:0; left:0; right:0; height:34%; background:linear-gradient(180deg,#1B3F73,#2A5490);}
+.sample.medicare .botband{position:absolute; bottom:0; left:0; right:0; height:8%; background:#A3242E;}
+.sample.medicare .seal{position:absolute; left:12px; top:8px; width:24px; height:24px; border-radius:50%; border:2px solid rgba(255,255,255,.8);}
+.sample.medicare .title{position:absolute; left:44px; top:12px; right:10px; color:#fff; font-weight:700; font-size:10px; letter-spacing:.02em;}
+.sample.medicare .fields{position:absolute; left:14px; right:14px; top:40%; display:flex; flex-direction:column; gap:7px; color:#1B3F73;}
+
+/* ID mock — a fixed-appearance "physical card" mockup like the others
+   above, so its ink stays a constant dark tone rather than following the
+   page's --ink token (which lightens for dark mode and would vanish
+   against this card's always-light background). */
+.sample.idcard{background:linear-gradient(160deg,#FCFBF8 0%,#EFEAE0 100%); color:#8C4B32;}
+.sample.idcard .strip{position:absolute; top:0; left:0; right:0; height:22%; background:var(--teal-dark);}
+.sample.idcard .statename{position:absolute; left:12px; top:5px; color:#fff; font-family:'Noto Serif TC',serif; font-weight:700; font-size:12px;}
+.sample.idcard .photo{
+  position:absolute; left:12px; top:30%; width:34%; aspect-ratio:3/4;
+  border-radius:5px; background:linear-gradient(160deg,#DCD3C4,#C9BEAA);
+  border:1px solid rgba(0,0,0,.08);
+}
+.sample.idcard .fields{position:absolute; left:52%; right:10px; top:30%; display:flex; flex-direction:column; gap:6px; color:#2B2620;}
+
+/* ---- Footer ---- */
+footer{
+  margin-top:36px; padding-top:20px; border-top:1px solid var(--line);
+  display:flex; justify-content:space-between; align-items:flex-end; gap:20px;
+  flex-wrap:wrap;
+}
+.footer-note{font-size:12.5px; color:var(--ink-soft); max-width:56ch;}
+.footer-note b{color:var(--clay);}
+.footer-org{font-family:'Noto Serif TC',serif; font-weight:700; font-size:13px; color:var(--teal); text-align:right;}
+.footer-org span{display:block; font-family:'Noto Sans TC',sans-serif; font-weight:400; font-size:10.5px; color:var(--ink-soft); margin-top:2px;}
+
+@media (max-width:680px){
+  .page{padding:28px 18px 40px;}
+  .item{grid-template-columns:1fr; grid-template-rows:auto auto;}
+  header{flex-direction:column;}
+}
+@media print{
+  body{background:#fff;}
+  @page{ size: A4 portrait; margin: 12mm; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div>
+      <div class="brand">Gentle Heart Adult Daycare · 吉泰老年中心</div>
+      <h1>入會證件須知</h1>
+      <div class="sub-en">Documents to Bring for Enrollment</div>
+    </div>
+    <div class="count-badge"><span class="num">3</span><span class="label">項證件</span></div>
+  </header>
+
+  <p class="intro">
+    為了幫您／您的家人順利完成入會登記與保險核對，請在第一次來訪時攜帶以下 <b>三種證件的正本或影本</b>。若手上沒有其中一項，也請告訴我們的工作人員，我們會協助您處理。
+  </p>
+
+  <div class="items">
+
+    <div class="item">
+      <div class="sample medical">
+        <span class="tag">範例 SAMPLE</span>
+        <div class="inner">
+          <div class="crest"></div>
+          <div class="sample-line short"></div>
+        </div>
+        <div class="band"></div>
+        <div class="fields">
+          <div class="sample-line med"></div>
+          <div class="sample-line short"></div>
+        </div>
+      </div>
+      <div>
+        <div class="item-head">
+          <span class="item-num" style="--accent:var(--teal); background:var(--teal);">1</span>
+          <div class="item-title">白卡（醫療補助卡）<span class="en">MEDI-CAL CARD</span></div>
+        </div>
+        <div class="item-desc">加州提供的免費／低收入醫療保險卡，卡上會印有姓名與會員編號（Member ID）。我們需要用它來核對您的醫療保險資格。</div>
+        <div class="chips">
+          <span class="chip" style="background:var(--teal-soft); color:var(--teal); border-color:transparent;">L.A. Care</span>
+          <span class="chip" style="background:var(--teal-soft); color:var(--teal); border-color:transparent;">Health Net</span>
+          <span class="chip" style="background:var(--teal-soft); color:var(--teal); border-color:transparent;">Kaiser Permanente</span>
+          <span class="chip" style="background:var(--teal-soft); color:var(--teal); border-color:transparent;">Anthem</span>
+          <span class="chip" style="background:var(--teal-soft); color:var(--teal); border-color:transparent;">IEHP</span>
+        </div>
+        <div class="chip-note">常見的白卡保險公司（僅供參考，不限於以上幾家）</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="sample medicare">
+        <span class="tag">範例 SAMPLE</span>
+        <div class="topband">
+          <div class="seal"></div>
+          <div class="title">MEDICARE HEALTH<br>INSURANCE</div>
+        </div>
+        <div class="fields">
+          <div class="sample-line med"></div>
+          <div class="sample-line short"></div>
+        </div>
+        <div class="botband"></div>
+      </div>
+      <div>
+        <div class="item-head">
+          <span class="item-num" style="--accent:var(--red); background:var(--red);">2</span>
+          <div class="item-title">紅藍卡（聯邦醫療保險卡）<span class="en">MEDICARE CARD</span></div>
+        </div>
+        <div class="item-desc">聯邦政府發給 65 歲以上長者的健康保險卡，卡片上下有紅、白、藍三色條紋，正面印有 Medicare Number 及 Part A／Part B 起始日期。</div>
+        <div class="chip-note">如果您同時有白卡跟紅藍卡（雙重保險），請兩張都帶來。</div>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="sample idcard">
+        <span class="tag">範例 SAMPLE</span>
+        <div class="strip"><div class="statename">CALIFORNIA</div></div>
+        <div class="photo"></div>
+        <div class="fields">
+          <div class="sample-line short"></div>
+          <div class="sample-line med"></div>
+          <div class="sample-line short"></div>
+        </div>
+      </div>
+      <div>
+        <div class="item-head">
+          <span class="item-num" style="--accent:var(--clay); background:var(--clay);">3</span>
+          <div class="item-title">身分證件（附照片）<span class="en">PHOTO ID</span></div>
+        </div>
+        <div class="item-desc">加州駕照、加州身分證（State ID）或護照皆可，用來核對本人身分與出生日期，並留存影本建檔。</div>
+        <div class="chip-note">駕照過期沒關係，只要姓名跟出生日期看得清楚即可。</div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    <div class="footer-note">若證件不齊全，仍可先來中心參觀／面談，<b>入會前補齊即可</b>，不會影響您的參觀行程。有任何問題歡迎隨時詢問工作人員。</div>
+    <div class="footer-org">Gentle Heart Adult Daycare<span>吉泰老年活動中心</span></div>
+  </footer>
+
+</div>
+</body></html>`;
+}
+
+function printIdChecklist(){
+  try{
+    const doc = buildIdChecklistHtml();
+    const win = window.open('', '_blank');
+    if(!win){
+      showToast('瀏覽器擋住了新分頁，改用頁面內顯示');
+      openIdChecklistInline(doc);
+      return;
+    }
+    win.document.open();
+    win.document.write(doc);
+    win.document.close();
+    try{ win.focus(); }catch(e){}
+  }catch(err){
+    console.error('printIdChecklist failed', err);
+    showToast('開啟時發生錯誤：'+(err && err.message ? err.message : err));
+  }
+}
+
+function openIdChecklistInline(doc){
+  try{
+    const pane = document.getElementById('printPreviewPane');
+    if(!pane){ showToast('系統錯誤：找不到預覽區塊，請重新整理頁面'); return; }
+    pane.innerHTML = `
+      <div class="print-preview-bar no-print" style="flex-direction:column; align-items:stretch; gap:4px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+          <span>📄 <b>入會證件須知</b> 預覽 — 可直接按 Ctrl+P／⌘+P 列印</span>
+          <span style="display:flex; gap:8px; flex-shrink:0;">
+            <button class="btn sm ghost" onclick="closePrintPreview()">✕ 關閉預覽</button>
+          </span>
+        </div>
+      </div>
+      <iframe srcdoc="${escapeHtml(doc)}" style="width:100%; height:calc(100vh - 90px); border:0; display:block; background:#fff;"></iframe>
+    `;
+    document.body.classList.add('print-mode-active');
+    pane.style.setProperty('display','block','important');
+    const sidebarEl = document.querySelector('.sidebar');
+    const mainEl = document.querySelector('.main');
+    if(sidebarEl) sidebarEl.style.setProperty('display','none','important');
+    if(mainEl) mainEl.style.setProperty('display','none','important');
+  }catch(err){
+    console.error('openIdChecklistInline failed', err);
+    showToast('顯示時發生錯誤：'+(err && err.message ? err.message : err));
+  }
 }
 
 /* =========================================================
