@@ -1669,8 +1669,8 @@ const GUIDE_SECTIONS = [
   {tab:'leaveAnalysis', icon:'🗓️', title:'請假頻率分析', tagline:'誰特別常請假、理由是什麼',
    desc:'把每個人的請假紀錄統計出來，連續好幾天的請假（例如回國一個月）算成一次，不會跟真的常常請假的人混在一起，可以依次數或天數排序，也能看到每個人最常見的請假理由。',
    uses:['依「次數」或「天數」排序，找出常請假的會員','可以指定日期區間，或搜尋特定會員','點會員姓名可直接打開他的完整資料']},
-  {tab:'driverStats', icon:'🚐', title:'司機與自駕統計', tagline:'每位師傅每個月接送幾人次、自駕會員每個月來幾次',
-   desc:'依目前的排班與請假/加開紀錄，算出每位師傅每個月實際接送了幾人次，另外也列出每位自駕會員每個月自己來了幾次，方便安排車輛與人力。',
+  {tab:'driverStats', icon:'🚐', title:'司機與自駕統計', tagline:'每位師傅每個月接送幾位會員、自駕會員每個月來幾次',
+   desc:'依目前的排班與請假/加開紀錄，算出每位師傅每個月實際接送了幾位不同的會員（同一人接送再多天也只算一次），另外也列出每位自駕會員每個月自己來了幾次，方便安排車輛與人力。',
    uses:['指定日期區間，查看各師傅每月載客人次總表','查看自駕會員每月到訪次數總表','點自駕會員姓名可直接打開他的完整資料']},
   {tab:'admission', icon:'📝', title:'新會員入會申請表', tagline:'新會員／新員工的官方紙本表格',
    desc:'新會員入會需要用到的整套紙本流程文件（含Intake Information與Evaluation），以及員工招募用的應徵申請表，都可以在這裡直接列印，不需要另外找檔案。',
@@ -6536,8 +6536,8 @@ function effectiveDriverForDate(driverName, dateStr){
 }
 
 function computeDriverMonthlyStats(startStr, endStr){
-  const driverMonthly = {}; // driver -> month -> count
-  const selfDriveMonthly = {}; // clientId -> month -> count
+  const driverMonthlySets = {}; // driver -> month -> Set(clientId) — a driver's count is how many DIFFERENT people they drove that month, not how many days they drove; someone driven 20 days in a month by the same person is still 1 person, not 20.
+  const selfDriveMonthly = {}; // clientId -> month -> count (this one IS a visit count — it's already per-person, so no dedup issue)
   const months = new Set();
   let d = startStr, guard = 0;
   while(d <= endStr && guard < 3660){
@@ -6549,8 +6549,9 @@ function computeDriverMonthlyStats(startStr, endStr){
       getScheduledForDate(d).forEach(({client})=>{
         if(client.transportMode==='company' && client.driver){
           const effDriver = effectiveDriverForDate(client.driver, d);
-          if(!driverMonthly[effDriver]) driverMonthly[effDriver] = {};
-          driverMonthly[effDriver][mk] = (driverMonthly[effDriver][mk]||0)+1;
+          if(!driverMonthlySets[effDriver]) driverMonthlySets[effDriver] = {};
+          if(!driverMonthlySets[effDriver][mk]) driverMonthlySets[effDriver][mk] = new Set();
+          driverMonthlySets[effDriver][mk].add(client.id);
         } else if(client.transportMode==='uber_self' && client.subMode==='自駕'){
           if(!selfDriveMonthly[client.id]) selfDriveMonthly[client.id] = {};
           selfDriveMonthly[client.id][mk] = (selfDriveMonthly[client.id][mk]||0)+1;
@@ -6559,6 +6560,13 @@ function computeDriverMonthlyStats(startStr, endStr){
     }
     d = addDays(d,1);
   }
+  const driverMonthly = {};
+  Object.keys(driverMonthlySets).forEach(driver=>{
+    driverMonthly[driver] = {};
+    Object.keys(driverMonthlySets[driver]).forEach(mk=>{
+      driverMonthly[driver][mk] = driverMonthlySets[driver][mk].size;
+    });
+  });
   return {driverMonthly, selfDriveMonthly, months: Array.from(months).sort()};
 }
 
@@ -6617,7 +6625,7 @@ function renderDriverStats(root){
     <div class="topbar">
       <div>
         <div class="page-title">司機與自駕統計</div>
-        <div class="page-sub">每位師傅每個月接送了幾人次，以及自駕會員每個月自己來了幾次 · 依目前排班與請假/加開紀錄回推，過去若調整過排班，該月數字可能與實際略有出入</div>
+        <div class="page-sub">每位師傅每個月接送了幾位不同的會員（同一人接送再多天也只算一次），以及自駕會員每個月自己來了幾次 · 依目前排班與請假/加開紀錄回推，過去若調整過排班，該月數字可能與實際略有出入</div>
       </div>
       <div class="actions" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
         <label style="font-size:12px; color:var(--ink-soft); display:flex; align-items:center; gap:4px;">起
@@ -6631,7 +6639,7 @@ function renderDriverStats(root){
     </div>
 
     <div class="card card-pad" style="margin-bottom:18px;">
-      <div class="section-label" style="margin-top:0;">司機每月載客人次</div>
+      <div class="section-label" style="margin-top:0;">司機每月接送人數（不重複計算同一人）</div>
       ${renderMonthMatrix(driverRows, driverMonthly, months, {rowHeader:'司機', emptyText:'這段區間沒有司機接送紀錄。'})}
     </div>
 
