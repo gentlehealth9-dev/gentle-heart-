@@ -1136,6 +1136,9 @@ function removeException(dateStr, excId){
 // Visitors who visited a while ago but still haven't been followed up on —
 // no doctor-eval fax back yet, and it's been long enough since their most
 // recent visit that they're at risk of falling through the cracks.
+function missingEmergencyContact(c){
+  return !(c.emergencyContact||'').trim() && !(c.emergencyPhone||'').trim();
+}
 function getVisitorsNeedingFollowUp(thresholdDays){
   thresholdDays = thresholdDays || 7;
   const today = parseDate(todayStr());
@@ -1283,6 +1286,11 @@ function renderDashboard(root){
   // when checking "未設定" members by hand).
   const unsetTransport = CLIENTS.filter(c=>c.status==='active' && !c.visitor && !c.ers && !c.transportMode);
   const followUpVisitors = getVisitorsNeedingFollowUp(7);
+  // Only visitors get an emergency-contact field surfaced in the modal at
+  // all (long-term members' families are handled through the enrollment
+  // paperwork instead), so checking regular members here would just flag
+  // ~all of them by design, not an actual gap — scope this to visitors.
+  const missingEmergencyContact = CLIENTS.filter(c=>c.status==='active' && c.visitor && !(c.emergencyContact||'').trim() && !(c.emergencyPhone||'').trim());
 
   root.innerHTML = `
     <div class="topbar">
@@ -1345,7 +1353,8 @@ function renderDashboard(root){
         }).join(''):''}
         ${overQuota.length? overQuota.map(o=>`<div class="hist-item"><span>${clientLabel(o.c)} 本週已到 <b>${o.u.count}</b> 天，超過核准 <b>${o.c.insuranceDaysPerWeek}</b> 天</span><span class="meta note-flag">請確認保險</span></div>`).join(''):''}
         ${followUpVisitors.length? followUpVisitors.map(f=>`<div class="hist-item"><span>${clientLabel(f.client)} <b>${f.daysSince}</b> 天前來訪（${fmtDateHuman(f.lastVisitDate)}），還沒收到醫生評估回傳</span><span class="meta"><a href="#" onclick="openMemberModal('${escapeHtml(f.client.id)}');return false;" style="color:var(--teal);">前往跟進 →</a></span></div>`).join(''):''}
-        ${(!noDriverToday.length && !pending.length && !unsetTransport.length && !leaveToday.length && !overQuota.length && !followUpVisitors.length) ? '<div style="color:var(--ink-soft);">目前沒有需要留意的事項。</div>':''}
+        ${missingEmergencyContact.length? `<div class="hist-item"><span>有 <b>${missingEmergencyContact.length}</b> 位在籍訪客沒有填寫緊急聯絡人</span><span class="meta"><a href="#" onclick="memberFilter.visitor='visitor_missing_emergency';setTab('members');return false;" style="color:var(--teal);">前往處理 →</a></span></div>`:''}
+        ${(!noDriverToday.length && !pending.length && !unsetTransport.length && !leaveToday.length && !overQuota.length && !followUpVisitors.length && !missingEmergencyContact.length) ? '<div style="color:var(--ink-soft);">目前沒有需要留意的事項。</div>':''}
       </div>
     </div>
 
@@ -1742,6 +1751,7 @@ function renderMembers(root){
         <option value="all">全部身份</option>
         <option value="visitor">只看訪客</option>
         <option value="visitor_pending_eval">訪客－⏳ 還沒收到醫生回傳</option>
+        <option value="visitor_missing_emergency">訪客－缺緊急聯絡人</option>
         <option value="member">只看正式會員</option>
       </select>
     </div>
@@ -1792,6 +1802,7 @@ function renderMemberRows(){
     if(memberFilter.transport!=='all' && c.transportMode!==memberFilter.transport) return false;
     if(memberFilter.visitor==='visitor' && !c.visitor) return false;
     if(memberFilter.visitor==='visitor_pending_eval' && !(c.visitor && !c.doctorEvalReturned)) return false;
+    if(memberFilter.visitor==='visitor_missing_emergency' && !(c.visitor && missingEmergencyContact(c))) return false;
     if(memberFilter.visitor==='member' && c.visitor) return false;
     if(q){
       const hay = `${c.id} ${c.enName} ${c.cnName} ${c.phone}`.toLowerCase();
@@ -1822,7 +1833,7 @@ function renderMemberRows(){
       <td>${escapeHtml(c.driver||'—')}</td>
       <td>${c.dietary? `<span class="badge clay">${escapeHtml(c.dietary)}</span>`:'—'}</td>
       <td>${c.insuranceDaysPerWeek || 0} 天/週</td>
-      <td><span class="badge ${STATUS_BADGE[c.status]||''}">${STATUS_LABEL[c.status]||c.status}</span>${c.visitor && !c.doctorEvalReturned? ` <span class="badge amber" title="訪客已來訪、還沒收到家庭醫生評估傳真回覆，需要跟進">⏳ 等醫生回傳</span>`:''}</td>
+      <td><span class="badge ${STATUS_BADGE[c.status]||''}">${STATUS_LABEL[c.status]||c.status}</span>${c.visitor && !c.doctorEvalReturned? ` <span class="badge amber" title="訪客已來訪、還沒收到家庭醫生評估傳真回覆，需要跟進">⏳ 等醫生回傳</span>`:''}${c.visitor && missingEmergencyContact(c)? ` <span class="badge red" title="這位訪客沒有填寫緊急聯絡人姓名或電話">🆘 缺緊急聯絡人</span>`:''}</td>
     </tr>
   `).join('');
 }
