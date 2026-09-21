@@ -6521,6 +6521,20 @@ function defaultDriverStatsRange(){
 // based on CURRENT baseline schedules + recorded leave/extra exceptions — a
 // baseline change made after the fact isn't retroactively reflected in
 // older months.
+// A client's `driver` field only holds who drives them NOW — when a route
+// is handed over from one driver to another, every affected client's field
+// gets renamed to the new driver, with no record of who drove them before
+// the handover. Without this, driver stats for past months would silently
+// attribute the outgoing driver's whole history to the incoming driver.
+// List each handover here so past months still credit the right person.
+const DRIVER_HANDOVERS = [
+  {from:'杜師傅', to:'小伍師傅', effectiveDate:'2026-09-21'}, // 小伍師傅接手杜師傅的路線
+];
+function effectiveDriverForDate(driverName, dateStr){
+  const h = DRIVER_HANDOVERS.find(h=>h.to===driverName && dateStr < h.effectiveDate);
+  return h ? h.from : driverName;
+}
+
 function computeDriverMonthlyStats(startStr, endStr){
   const driverMonthly = {}; // driver -> month -> count
   const selfDriveMonthly = {}; // clientId -> month -> count
@@ -6534,8 +6548,9 @@ function computeDriverMonthlyStats(startStr, endStr){
       months.add(mk);
       getScheduledForDate(d).forEach(({client})=>{
         if(client.transportMode==='company' && client.driver){
-          if(!driverMonthly[client.driver]) driverMonthly[client.driver] = {};
-          driverMonthly[client.driver][mk] = (driverMonthly[client.driver][mk]||0)+1;
+          const effDriver = effectiveDriverForDate(client.driver, d);
+          if(!driverMonthly[effDriver]) driverMonthly[effDriver] = {};
+          driverMonthly[effDriver][mk] = (driverMonthly[effDriver][mk]||0)+1;
         } else if(client.transportMode==='uber_self' && client.subMode==='自駕'){
           if(!selfDriveMonthly[client.id]) selfDriveMonthly[client.id] = {};
           selfDriveMonthly[client.id][mk] = (selfDriveMonthly[client.id][mk]||0)+1;
