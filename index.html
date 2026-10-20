@@ -43,7 +43,7 @@ body{
 .serif{font-family:'Noto Serif TC',serif;}
 
 /* ---- App shell ---- */
-#app{display:flex; min-height:100vh; zoom:1.7;}
+#app{display:flex; min-height:100vh; zoom:1.5;}
 .sidebar{
   width:212px; flex-shrink:0;
   background:var(--teal-dark);
@@ -242,7 +242,7 @@ table.datatable tr[draggable="true"]:active{cursor:grabbing;}
 .overlay{
   position:fixed; inset:0; background:rgba(34,29,22,0.45); z-index:50;
   display:flex; align-items:center; justify-content:center; padding:20px;
-  zoom:1.7;
+  zoom:1.5;
 }
 .modal{
   background:#fff; border-radius:14px; width:640px; max-width:100%; max-height:88vh; overflow:auto;
@@ -273,7 +273,7 @@ table.datatable tr[draggable="true"]:active{cursor:grabbing;}
   position:fixed; bottom:22px; left:50%; transform:translateX(-50%);
   background:var(--teal-dark); color:#fff; padding:10px 18px; border-radius:20px; font-size:13px;
   box-shadow:var(--shadow); z-index:100; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s;
-  zoom:1.7;
+  zoom:1.5;
 }
 .toast.show{opacity:1; transform:translateX(-50%) translateY(-6px);}
 
