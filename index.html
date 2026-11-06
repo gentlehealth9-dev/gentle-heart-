@@ -2709,6 +2709,7 @@ async function addHistEntryFromModal(type){
 }
 function getKnownDrivers(){
   const set = new Set();
+  KNOWN_DRIVERS.forEach(d=>set.add(d));
   CLIENTS.forEach(c=>{ if(c.driver) set.add(c.driver); });
   try{
     const map = loadDriverCityMap();
